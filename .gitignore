@@ -1,11 +1,19 @@
 CLAUDE.md
-# Binaries
+# Binaries (in their respective directories)
 cbrabuild/cbrabuild
 cbrafetch/cbrafetch
 cbratube/cbratube
 cbracal/cbracal
 cbranotes/cbranotes
 cbratasks/cbratasks
+
+# Binaries anywhere in the repo (catch misplaced binaries)
+**/cbrabuild
+**/cbrafetch
+**/cbratube
+**/cbracal
+**/cbranotes
+**/cbratasks
 
 # Go build artifacts
 *.exe
