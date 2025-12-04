@@ -1,0 +1,2 @@
+# zebrafetch
+My terminal Fetch

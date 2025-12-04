@@ -1,0 +1,31 @@
+# cbracal - Calendar Configuration
+# 
+# Copy this file to ~/.config/cbracal/config.yaml and customize it.
+#
+# The app will automatically create a default config if none exists.
+
+# Radicale CalDAV server configuration (optional)
+# Uncomment and fill in your details to sync with a Radicale server
+# radicale:
+#   server_url: "https://your-radicale-server.com"
+#   username: "your-username"
+#   password: "your-password"
+
+# Additional calendars from URLs or local files
+calendars: []
+  # Example URL calendar (e.g., public holidays):
+  # - name: "Public Holidays"
+  #   url: "https://example.com/holidays.ics"
+  #   type: "url"
+  #
+  # Example local file:
+  # - name: "Personal"
+  #   file: "/path/to/personal.ics"
+  #   type: "file"
+
+# Local .ics files in the config directory (~/.config/cbracal/)
+# These files are looked up relative to the config directory
+local_calendars: []
+  # - "work.ics"
+  # - "personal.ics"
+
