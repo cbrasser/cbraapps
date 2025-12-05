@@ -1,0 +1,236 @@
+/* Glow Dark Theme - Converted from https://github.com/charmbracelet/glamour */
+
+/* Page Setup for PDF */
+@page {
+    margin: 1.5cm;
+    size: A4;
+}
+
+/* Document */
+body {
+    color: #d0d0d0;
+    background-color: #1c1c1c;
+    margin: 0;
+    padding: 1.5em;
+    line-height: 1.6;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Ubuntu Mono',
+                 'Source Code Pro', 'SF Mono', 'Menlo', 'Monaco', 'Consolas',
+                 'Liberation Mono', monospace;
+    font-size: 11pt;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Block Quote */
+blockquote {
+    margin-left: 1em;
+    padding-left: 1em;
+    border-left: 2px solid #585858;
+    color: #d0d0d0;
+}
+
+/* Paragraph */
+p {
+    margin: 1em 0;
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+    font-weight: bold;
+}
+
+h1 {
+    color: #ffff87;
+    background-color: #5f5fff;
+    padding: 0.2em 0.5em;
+    display: inline-block;
+}
+
+h2, h3, h4, h5 {
+    color: #00afff;
+}
+
+h6 {
+    color: #00af5f;
+    font-weight: normal;
+}
+
+h2::before { content: "## "; }
+h3::before { content: "### "; }
+h4::before { content: "#### "; }
+h5::before { content: "##### "; }
+h6::before { content: "###### "; }
+
+/* Text Formatting */
+strong, b {
+    font-weight: bold;
+}
+
+em, i {
+    font-style: italic;
+}
+
+del, s {
+    text-decoration: line-through;
+}
+
+/* Horizontal Rule */
+hr {
+    border: none;
+    border-top: 1px dashed #585858;
+    color: #585858;
+    margin: 2em 0;
+}
+
+/* Lists */
+ul, ol {
+    margin: 1em 0;
+    padding-left: 2em;
+}
+
+ul li::marker {
+    content: "• ";
+}
+
+ol li::marker {
+    content: counter(list-item) ". ";
+}
+
+/* Task Lists */
+input[type="checkbox"] {
+    margin-right: 0.5em;
+}
+
+/* Links */
+a {
+    color: #008787;
+    text-decoration: underline;
+    font-weight: bold;
+}
+
+a:hover {
+    color: #00afff;
+}
+
+/* Images */
+img {
+    max-width: 100%;
+    border: 1px solid #767676;
+}
+
+/* Code */
+code {
+    color: #ff5f5f;
+    background-color: #303030;
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Ubuntu Mono',
+                 'Source Code Pro', 'SF Mono', 'Menlo', 'Monaco', 'Consolas',
+                 'Liberation Mono', monospace;
+    font-size: 0.95em;
+}
+
+/* Code Blocks */
+pre {
+    background-color: #373737;
+    color: #808080;
+    padding: 1em;
+    margin: 1.5em 0;
+    border-radius: 5px;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Ubuntu Mono',
+                 'Source Code Pro', 'SF Mono', 'Menlo', 'Monaco', 'Consolas',
+                 'Liberation Mono', monospace;
+    font-size: 0.9em;
+    line-height: 1.5;
+}
+
+pre code {
+    color: #c4c4c4;
+    background-color: transparent;
+    padding: 0;
+    font-size: 1em;
+}
+
+/* Syntax Highlighting for Code Blocks */
+.chroma .err { color: #f1f1f1; background-color: #f05b5b; }
+.chroma .c,
+.chroma .comment { color: #676767; }
+.chroma .cp,
+.chroma .comment-preproc { color: #ff875f; }
+.chroma .k,
+.chroma .keyword { color: #00aaff; }
+.chroma .kr,
+.chroma .keyword-reserved { color: #ff5fd2; }
+.chroma .kn,
+.chroma .keyword-namespace { color: #ff5f87; }
+.chroma .kt,
+.chroma .keyword-type { color: #6e6ed8; }
+.chroma .o,
+.chroma .operator { color: #ef8080; }
+.chroma .p,
+.chroma .punctuation { color: #e8e8a8; }
+.chroma .n,
+.chroma .name { color: #c4c4c4; }
+.chroma .nb,
+.chroma .name-builtin { color: #ff8ec7; }
+.chroma .nt,
+.chroma .name-tag { color: #b083ea; }
+.chroma .na,
+.chroma .name-attribute { color: #7a7ae6; }
+.chroma .nc,
+.chroma .name-class { color: #f1f1f1; text-decoration: underline; font-weight: bold; }
+.chroma .nd,
+.chroma .name-decorator { color: #ffff87; }
+.chroma .nf,
+.chroma .name-function { color: #00d787; }
+.chroma .m,
+.chroma .literal-number { color: #6eefc0; }
+.chroma .s,
+.chroma .literal-string { color: #c69669; }
+.chroma .se,
+.chroma .literal-string-escape { color: #afffd7; }
+.chroma .gd,
+.chroma .generic-deleted { color: #fd5b5b; }
+.chroma .ge,
+.chroma .generic-emph { font-style: italic; }
+.chroma .gi,
+.chroma .generic-inserted { color: #00d787; }
+.chroma .gs,
+.chroma .generic-strong { font-weight: bold; }
+.chroma .gh,
+.chroma .generic-subheading { color: #777777; }
+
+/* Tables */
+table {
+    border-collapse: collapse;
+    margin: 1em 0;
+    width: 100%;
+}
+
+th, td {
+    border: 1px solid #585858;
+    padding: 0.5em;
+    text-align: left;
+}
+
+th {
+    background-color: #303030;
+    font-weight: bold;
+}
+
+/* Definition Lists */
+dt {
+    font-weight: bold;
+    margin-top: 1em;
+}
+
+dd {
+    margin-left: 2em;
+}
+
+dd::before {
+    content: "🠶 ";
+}

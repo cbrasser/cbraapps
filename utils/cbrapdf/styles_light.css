@@ -1,0 +1,181 @@
+/* Glow Light Theme - Converted from https://github.com/charmbracelet/glamour */
+
+/* Document */
+body {
+    color: #1c1c1c;
+    background-color: #ffffff;
+    margin: 2em;
+    line-height: 1.6;
+}
+
+/* Block Quote */
+blockquote {
+    margin-left: 1em;
+    padding-left: 1em;
+    border-left: 2px solid #b2b2b2;
+    color: #1c1c1c;
+}
+
+/* Paragraph */
+p {
+    margin: 1em 0;
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+    font-weight: bold;
+}
+
+h1 {
+    color: #ffff87;
+    background-color: #5f5fff;
+    padding: 0.2em 0.5em;
+    display: inline-block;
+}
+
+h2, h3, h4, h5 {
+    color: #005fff;
+}
+
+h6 {
+    color: #005fff;
+    font-weight: normal;
+}
+
+h2::before { content: "## "; }
+h3::before { content: "### "; }
+h4::before { content: "#### "; }
+h5::before { content: "##### "; }
+h6::before { content: "###### "; }
+
+/* Text Formatting */
+strong, b {
+    font-weight: bold;
+}
+
+em, i {
+    font-style: italic;
+}
+
+del, s {
+    text-decoration: line-through;
+}
+
+/* Horizontal Rule */
+hr {
+    border: none;
+    border-top: 1px dashed #b2b2b2;
+    color: #b2b2b2;
+    margin: 2em 0;
+}
+
+/* Lists */
+ul, ol {
+    margin: 1em 0;
+    padding-left: 2em;
+}
+
+ul li::marker {
+    content: "• ";
+}
+
+ol li::marker {
+    content: counter(list-item) ". ";
+}
+
+/* Task Lists */
+input[type="checkbox"] {
+    margin-right: 0.5em;
+}
+
+/* Links */
+a {
+    color: #00af87;
+    text-decoration: underline;
+}
+
+a:visited {
+    color: #00875f;
+}
+
+a:hover {
+    color: #005fff;
+}
+
+/* Images */
+img {
+    max-width: 100%;
+    border: 1px solid #767676;
+}
+
+/* Code */
+code {
+    color: #ff5f5f;
+    background-color: #e4e4e4;
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+    font-family: monospace;
+}
+
+/* Code Blocks */
+pre {
+    background-color: #f5f5f5;
+    color: #6c6c6c;
+    padding: 1em;
+    margin: 2em 0;
+    border-radius: 5px;
+    overflow-x: auto;
+}
+
+pre code {
+    color: #2a2a2a;
+    background-color: transparent;
+    padding: 0;
+}
+
+/* Syntax Highlighting for Code Blocks */
+.chroma .err { color: #f1f1f1; background-color: #ff5555; }
+.chroma .c,
+.chroma .comment { color: #8d8d8d; }
+.chroma .k,
+.chroma .keyword { color: #279efc; }
+.chroma .nf,
+.chroma .name-function { color: #019f57; }
+.chroma .m,
+.chroma .literal-number { color: #22ccae; }
+.chroma .s,
+.chroma .literal-string { color: #7e5b38; }
+
+/* Tables */
+table {
+    border-collapse: collapse;
+    margin: 1em 0;
+    width: 100%;
+}
+
+th, td {
+    border: 1px solid #b2b2b2;
+    padding: 0.5em;
+    text-align: left;
+}
+
+th {
+    background-color: #e4e4e4;
+    font-weight: bold;
+}
+
+/* Definition Lists */
+dt {
+    font-weight: bold;
+    margin-top: 1em;
+}
+
+dd {
+    margin-left: 2em;
+}
+
+dd::before {
+    content: "🠶 ";
+}

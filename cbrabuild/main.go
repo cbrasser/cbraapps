@@ -205,6 +205,7 @@ func initialModel() (model, error) {
 }
 
 // discoverProjects scans source_dir for subdirectories containing go.mod files
+// It scans both the root level and one level deep (e.g., utils/*)
 func discoverProjects(sourceDir string) ([]project, error) {
 	var projects []project
 
@@ -218,16 +219,40 @@ func discoverProjects(sourceDir string) ([]project, error) {
 			continue
 		}
 
-		// Check if directory contains a go.mod file
 		projectPath := filepath.Join(sourceDir, entry.Name())
 		goModPath := filepath.Join(projectPath, "go.mod")
 
+		// Check if this directory contains a go.mod file
 		if _, err := os.Stat(goModPath); err == nil {
 			// This is a Go project
 			projects = append(projects, project{
 				name: entry.Name(),
 				path: projectPath,
 			})
+		} else {
+			// If no go.mod at this level, scan subdirectories (e.g., utils/*)
+			subEntries, err := os.ReadDir(projectPath)
+			if err != nil {
+				// Skip if we can't read the subdirectory
+				continue
+			}
+
+			for _, subEntry := range subEntries {
+				if !subEntry.IsDir() {
+					continue
+				}
+
+				subProjectPath := filepath.Join(projectPath, subEntry.Name())
+				subGoModPath := filepath.Join(subProjectPath, "go.mod")
+
+				if _, err := os.Stat(subGoModPath); err == nil {
+					// This is a Go project in a subfolder
+					projects = append(projects, project{
+						name: subEntry.Name(),
+						path: subProjectPath,
+					})
+				}
+			}
 		}
 	}
 
