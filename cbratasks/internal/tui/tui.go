@@ -53,6 +53,7 @@ type Model struct {
 	height      int
 	statusMsg   string
 	quitting    bool
+	showArchive bool
 }
 
 // Styles
@@ -241,30 +242,35 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				t := m.tasks[m.cursor]
 				taskID := t.ID
 				wasCompleted := t.Completed
-				
+				cursorPos := m.cursor
+
 				// Start sync spinner if this is a radicale task
 				if t.ListName == "radicale" && m.storage.IsSyncEnabled() {
 					m.syncing = true
 					cmds = append(cmds, m.spinner.Tick)
 				}
-				
+
 				m.storage.ToggleCompleteWithSync(taskID)
 				m.tasks = m.storage.GetTasks()
 
-				// Find the task's new position after re-sorting
-				for i, tsk := range m.tasks {
-					if tsk.ID == taskID {
-						m.cursor = i
-						break
+				if wasCompleted {
+					// Task was completed, now it's undone - follow it to new position
+					for i, tsk := range m.tasks {
+						if tsk.ID == taskID {
+							m.cursor = i
+							break
+						}
 					}
+					m.statusMsg = "Task reopened"
+				} else {
+					// Task was incomplete, now it's done - keep cursor at same position
+					m.cursor = cursorPos
+					if m.cursor >= len(m.tasks) && len(m.tasks) > 0 {
+						m.cursor = len(m.tasks) - 1
+					}
+					m.statusMsg = "✓ Task completed!"
 				}
 
-				if !wasCompleted {
-					m.statusMsg = "✓ Task completed!"
-				} else {
-					m.statusMsg = "Task reopened"
-				}
-				
 				m.syncing = false
 			}
 
@@ -317,6 +323,50 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.statusMsg = ""
 				return m, tea.Batch(m.spinner.Tick, m.doSync())
 			}
+
+		case "z":
+			// Archive single completed task
+			if !m.showArchive && len(m.tasks) > 0 && m.cursor < len(m.tasks) {
+				t := m.tasks[m.cursor]
+				if t.Completed {
+					if err := m.storage.ArchiveTask(t.ID); err == nil {
+						m.tasks = m.storage.GetTasks()
+						if m.cursor >= len(m.tasks) && m.cursor > 0 {
+							m.cursor--
+						}
+						m.statusMsg = "✓ Task archived!"
+					} else {
+						m.statusMsg = fmt.Sprintf("Failed to archive: %v", err)
+					}
+				} else {
+					m.statusMsg = "Only completed tasks can be archived"
+				}
+			}
+
+		case "Z":
+			// Archive all completed tasks
+			if !m.showArchive {
+				count, err := m.storage.ArchiveAllCompletedTasks()
+				if err == nil {
+					m.tasks = m.storage.GetTasks()
+					m.cursor = 0
+					m.statusMsg = fmt.Sprintf("✓ Archived %d completed task(s)", count)
+				} else {
+					m.statusMsg = fmt.Sprintf("Failed to archive: %v", err)
+				}
+			}
+
+		case "A":
+			// Toggle archive view
+			m.showArchive = !m.showArchive
+			if m.showArchive {
+				m.tasks = m.storage.GetArchivedTasks()
+				m.statusMsg = "Viewing archive"
+			} else {
+				m.tasks = m.storage.GetTasks()
+				m.statusMsg = "Viewing active tasks"
+			}
+			m.cursor = 0
 		}
 	}
 
@@ -502,7 +552,11 @@ func (m Model) View() string {
 	var b strings.Builder
 
 	// Title
-	b.WriteString(titleStyle.Render("📋 Tasks") + "\n\n")
+	title := "📋 Tasks"
+	if m.showArchive {
+		title = "📦 Archive"
+	}
+	b.WriteString(titleStyle.Render(title) + "\n\n")
 
 	// Search bar (if active)
 	if m.view == viewSearch {
@@ -554,12 +608,16 @@ func (m Model) View() string {
 	}
 
 	// Help
-	help := fmt.Sprintf("x: toggle • %s: note • %s: view note • %s: add • %s: search • s: sync • %s: quit",
-		m.config.Hotkeys.EditNote,
-		m.config.Hotkeys.ViewNote,
-		m.config.Hotkeys.AddTask,
-		m.config.Hotkeys.Search,
-		m.config.Hotkeys.Quit)
+	var help string
+	if m.showArchive {
+		help = fmt.Sprintf("A: back to tasks • %s: quit",
+			m.config.Hotkeys.Quit)
+	} else {
+		help = fmt.Sprintf("x: toggle • z: archive • Z: archive all • A: view archive • %s: add • %s: search • s: sync • %s: quit",
+			m.config.Hotkeys.AddTask,
+			m.config.Hotkeys.Search,
+			m.config.Hotkeys.Quit)
+	}
 	b.WriteString(helpStyle.Render(help))
 
 	return b.String()

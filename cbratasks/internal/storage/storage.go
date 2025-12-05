@@ -141,13 +141,42 @@ func (s *Storage) GetTasks() []*task.Task {
 
 		// Sort by due date (tasks with due dates first)
 		if tasks[i].DueDate != nil && tasks[j].DueDate != nil {
-			return tasks[i].DueDate.Before(*tasks[j].DueDate)
+			if !tasks[i].DueDate.Equal(*tasks[j].DueDate) {
+				return tasks[i].DueDate.Before(*tasks[j].DueDate)
+			}
+			// Same due date - group by tag
+			tagI := ""
+			if len(tasks[i].Tags) > 0 {
+				tagI = tasks[i].Tags[0]
+			}
+			tagJ := ""
+			if len(tasks[j].Tags) > 0 {
+				tagJ = tasks[j].Tags[0]
+			}
+			if tagI != tagJ {
+				return tagI < tagJ
+			}
+			// Same tag - sort by created date
+			return tasks[i].CreatedAt.Before(tasks[j].CreatedAt)
 		}
 		if tasks[i].DueDate != nil {
 			return true
 		}
 		if tasks[j].DueDate != nil {
 			return false
+		}
+
+		// No due dates - group by tag
+		tagI := ""
+		if len(tasks[i].Tags) > 0 {
+			tagI = tasks[i].Tags[0]
+		}
+		tagJ := ""
+		if len(tasks[j].Tags) > 0 {
+			tagJ = tasks[j].Tags[0]
+		}
+		if tagI != tagJ {
+			return tagI < tagJ
 		}
 
 		// Sort by created date
@@ -304,6 +333,12 @@ func (s *Storage) Sync() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	// Build map of archived task IDs to filter them out
+	archivedByID := make(map[string]bool)
+	for _, t := range s.archived {
+		archivedByID[t.ID] = true
+	}
+
 	// Build maps for comparison
 	localByID := make(map[string]*task.Task)
 	for _, t := range s.tasks {
@@ -314,7 +349,10 @@ func (s *Storage) Sync() error {
 
 	remoteByID := make(map[string]*task.Task)
 	for _, t := range remoteTasks {
-		remoteByID[t.ID] = t
+		// Skip tasks that are in our archive
+		if !archivedByID[t.ID] {
+			remoteByID[t.ID] = t
+		}
 	}
 
 	// Merge: remote wins for conflicts, but we push local-only tasks
@@ -327,8 +365,8 @@ func (s *Storage) Sync() error {
 		}
 	}
 
-	// Process remote tasks
-	for _, remote := range remoteTasks {
+	// Process remote tasks (filtered to exclude archived)
+	for _, remote := range remoteByID {
 		mergedTasks = append(mergedTasks, remote)
 	}
 
@@ -449,5 +487,50 @@ func (s *Storage) DeleteTaskWithSync(id string) error {
 	}
 
 	return nil
+}
+
+// ArchiveTask manually archives a single task by ID (only if completed)
+// This is a local operation - the task remains on the server for other clients
+func (s *Storage) ArchiveTask(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for i, t := range s.tasks {
+		if t.ID == id {
+			if !t.Completed {
+				return fmt.Errorf("cannot archive incomplete task")
+			}
+
+			t.Archived = true
+			s.archived = append(s.archived, t)
+			s.tasks = append(s.tasks[:i], s.tasks[i+1:]...)
+			return s.save()
+		}
+	}
+	return fmt.Errorf("task not found")
+}
+
+// ArchiveAllCompletedTasks archives all completed tasks
+// This is a local operation - tasks remain on the server for other clients
+func (s *Storage) ArchiveAllCompletedTasks() (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var active []*task.Task
+	count := 0
+	for _, t := range s.tasks {
+		if t.Completed {
+			t.Archived = true
+			s.archived = append(s.archived, t)
+			count++
+		} else {
+			active = append(active, t)
+		}
+	}
+	s.tasks = active
+	if err := s.save(); err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
