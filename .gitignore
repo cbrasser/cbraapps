@@ -14,7 +14,7 @@ cbratasks/cbratasks
 **/cbracal
 **/cbranotes
 **/cbratasks
-
+**/cbraslides
 # Go build artifacts
 *.exe
 *.exe~
