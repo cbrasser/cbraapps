@@ -15,6 +15,22 @@ cbratasks/cbratasks
 **/cbranotes
 **/cbratasks
 **/cbraslides
+
+# stray config
+cbrabuild.toml
+cbracal.toml
+cbranotes.toml
+cbraslides.toml
+cbratasks.toml
+cbratube.tom
+
+# stray config
+cbrabuild.toml
+cbracal.toml
+cbranotes.toml
+cbraslides.toml
+cbratasks.toml
+cbratube.toml
 # Go build artifacts
 *.exe
 *.exe~
