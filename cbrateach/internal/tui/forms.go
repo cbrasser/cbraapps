@@ -2,6 +2,7 @@ package tui
 
 import (
 	"errors"
+	"os"
 
 	"cbrateach/internal/models"
 
@@ -198,4 +199,111 @@ func ShowCourseEditForm(course *models.Course) (*CourseEditFormResult, error) {
 	}
 
 	return result, nil
+}
+
+func ShowExportFormatChoice() (string, error) {
+	var format string
+
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title("Choose export format").
+				Options(
+					huh.NewOption("CSV", "csv"),
+					huh.NewOption("Excel (XLSX)", "xlsx"),
+				).
+				Value(&format),
+		),
+	)
+
+	if err := form.Run(); err != nil {
+		return "", err
+	}
+
+	return format, nil
+}
+
+func ShowMessage(title, message string) error {
+	var ok bool
+
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewNote().
+				Title(title).
+				Description(message),
+			huh.NewConfirm().
+				Title("").
+				Affirmative("OK").
+				Value(&ok),
+		),
+	)
+
+	return form.Run()
+}
+
+type FeedbackFormResult struct {
+	FeedbackDir string
+	CustomMessage string
+}
+
+func ShowFeedbackForm() (*FeedbackFormResult, error) {
+	result := &FeedbackFormResult{}
+
+	// Get home directory for default
+	homeDir, _ := os.UserHomeDir()
+
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().
+				Title("Feedback Files Directory").
+				Description("Directory containing feedback files (named with student names)").
+				Value(&result.FeedbackDir).
+				Placeholder(homeDir).
+				Validate(func(s string) error {
+					if s == "" {
+						return errors.New("directory is required")
+					}
+					// Check if directory exists
+					if _, err := os.Stat(s); os.IsNotExist(err) {
+						return errors.New("directory does not exist")
+					}
+					return nil
+				}),
+
+			huh.NewText().
+				Title("Custom Message (optional)").
+				Description("Will replace {{CustomMessage}} in template").
+				Value(&result.CustomMessage).
+				Lines(5),
+		),
+	)
+
+	if err := form.Run(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func ShowConfirmation(title, message string) (bool, error) {
+	var confirmed bool
+
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewNote().
+				Title(title).
+				Description(message),
+			huh.NewConfirm().
+				Title("Proceed with sending emails?").
+				Affirmative("Yes, send emails").
+				Negative("Cancel").
+				Value(&confirmed),
+		),
+	)
+
+	if err := form.Run(); err != nil {
+		return false, err
+	}
+
+	return confirmed, nil
 }

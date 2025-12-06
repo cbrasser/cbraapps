@@ -62,7 +62,7 @@ func (s *Storage) SaveReview(review models.Review) error {
 	filename := fmt.Sprintf("%s_%s.json",
 		review.Date.Format("2006-01-02"),
 		sanitizeFilename(review.CourseName))
-	path := filepath.Join(s.cfg.ReviewsDir, filename)
+	path := filepath.Join(s.cfg.ReviewsDir(), filename)
 
 	data, err := json.MarshalIndent(review, "", "  ")
 	if err != nil {
@@ -130,7 +130,7 @@ func (s *Storage) AppendReviewToNote(review models.Review) error {
 }
 
 func (s *Storage) LoadReviews() ([]models.Review, error) {
-	files, err := os.ReadDir(s.cfg.ReviewsDir)
+	files, err := os.ReadDir(s.cfg.ReviewsDir())
 	if err != nil {
 		if os.IsNotExist(err) {
 			return []models.Review{}, nil
@@ -144,7 +144,7 @@ func (s *Storage) LoadReviews() ([]models.Review, error) {
 			continue
 		}
 
-		path := filepath.Join(s.cfg.ReviewsDir, file.Name())
+		path := filepath.Join(s.cfg.ReviewsDir(), file.Name())
 		data, err := os.ReadFile(path)
 		if err != nil {
 			continue

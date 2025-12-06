@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"cbrateach/internal/models"
+	"github.com/xuri/excelize/v2"
 )
 
 // Test storage functions
@@ -157,6 +158,92 @@ func (s *Storage) ExportGrades(courseID, outputPath string) error {
 		}
 
 		_, _ = file.WriteString(fmt.Sprintf("%s,%s,%.2f\n", vorname, nachname, avgGrade))
+	}
+
+	return nil
+}
+
+// ExportGradesXLSX exports average grades for all confirmed tests in XLSX format
+func (s *Storage) ExportGradesXLSX(courseID, outputPath string) error {
+	tests, err := s.LoadTests(courseID)
+	if err != nil {
+		return err
+	}
+
+	// Filter confirmed tests only
+	var confirmedTests []models.Test
+	for _, test := range tests {
+		if test.Status == "confirmed" {
+			confirmedTests = append(confirmedTests, test)
+		}
+	}
+
+	if len(confirmedTests) == 0 {
+		return fmt.Errorf("no confirmed tests found for this course")
+	}
+
+	// Calculate weighted average grade per student
+	studentGrades := make(map[string]float64)
+	studentWeights := make(map[string]float64)
+
+	for _, test := range confirmedTests {
+		weight := test.Weight
+		if weight <= 0 {
+			weight = 1.0
+		}
+
+		for _, score := range test.StudentScores {
+			studentGrades[score.StudentName] += score.Grade * weight
+			studentWeights[score.StudentName] += weight
+		}
+	}
+
+	// Create Excel file
+	f := excelize.NewFile()
+	defer f.Close()
+
+	sheetName := "Final Grades"
+	index, err := f.NewSheet(sheetName)
+	if err != nil {
+		return fmt.Errorf("failed to create sheet: %w", err)
+	}
+	f.SetActiveSheet(index)
+
+	// Set headers
+	f.SetCellValue(sheetName, "A1", "Vorname")
+	f.SetCellValue(sheetName, "B1", "Nachname")
+	f.SetCellValue(sheetName, "C1", "Grade")
+
+	// Write data
+	row := 2
+	for studentName, totalWeightedGrade := range studentGrades {
+		totalWeight := studentWeights[studentName]
+		avgGrade := totalWeightedGrade / totalWeight
+
+		// Split name
+		parts := strings.Fields(studentName)
+		vorname := ""
+		nachname := ""
+
+		if len(parts) > 0 {
+			vorname = parts[0]
+		}
+		if len(parts) > 1 {
+			nachname = strings.Join(parts[1:], " ")
+		}
+
+		f.SetCellValue(sheetName, fmt.Sprintf("A%d", row), vorname)
+		f.SetCellValue(sheetName, fmt.Sprintf("B%d", row), nachname)
+		f.SetCellValue(sheetName, fmt.Sprintf("C%d", row), avgGrade)
+		row++
+	}
+
+	// Delete default Sheet1
+	f.DeleteSheet("Sheet1")
+
+	// Save file
+	if err := f.SaveAs(outputPath); err != nil {
+		return fmt.Errorf("failed to save XLSX file: %w", err)
 	}
 
 	return nil

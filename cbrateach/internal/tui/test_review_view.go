@@ -2,9 +2,11 @@ package tui
 
 import (
 	"fmt"
+	"os/exec"
 	"strconv"
 	"strings"
 
+	"cbrateach/internal/email"
 	"cbrateach/internal/models"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -134,6 +136,12 @@ func (m Model) updateTestReviewView(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if test.Status == "confirmed" {
 			test.Status = "review"
 			m.storage.UpdateTest(*test)
+		}
+
+	case "f":
+		// Send feedback to students
+		if test.Status == "confirmed" {
+			return m, m.sendFeedbackEmails()
 		}
 	}
 
@@ -325,7 +333,7 @@ func (m Model) renderTestReviewView() string {
 	if test.Status == "review" {
 		help = append(help, "e: edit cell", "g: edit gifted points", "c: confirm test")
 	} else {
-		help = append(help, "u: unconfirm")
+		help = append(help, "u: unconfirm", "f: send feedback")
 	}
 	help = append(help, "esc: back")
 
@@ -404,4 +412,94 @@ func (m Model) renderGradeDistribution(test models.Test) string {
 	b.WriteString("\n")
 
 	return b.String()
+}
+
+func (m Model) sendFeedbackEmails() tea.Cmd {
+	return tea.ExecProcess(exec.Command("true"), func(err error) tea.Msg {
+		if m.selectedTest >= len(m.tests) {
+			return nil
+		}
+
+		test := m.tests[m.selectedTest]
+
+		if m.selectedCourse >= len(m.courses) {
+			return nil
+		}
+
+		course := m.courses[m.selectedCourse]
+
+		// Show feedback form to get directory and custom message
+		formResult, err := ShowFeedbackForm()
+		if err != nil {
+			return nil
+		}
+
+		// Prepare emails
+		emails, err := email.PrepareFeedbackEmails(m.cfg, test, course, formResult.FeedbackDir, formResult.CustomMessage)
+		if err != nil {
+			ShowMessage("Error", fmt.Sprintf("Failed to prepare emails: %v", err))
+			return nil
+		}
+
+		if len(emails) == 0 {
+			ShowMessage("No Emails", "No students with email addresses found for this test.")
+			return nil
+		}
+
+		// Show summary and confirmation
+		summary := email.EmailSummary(emails)
+		confirmed, err := ShowConfirmation("Send Feedback Emails", summary)
+		if err != nil || !confirmed {
+			return nil
+		}
+
+		// Send emails using pop for each student
+		successCount := 0
+		for _, e := range emails {
+			if err := m.sendFeedbackEmailWithPop(e); err != nil {
+				ShowMessage("Email Error", fmt.Sprintf("Failed to send email to %s: %v", e.StudentName, err))
+				continue
+			}
+			successCount++
+		}
+
+		ShowMessage("Emails Sent", fmt.Sprintf("Successfully sent %d out of %d emails.", successCount, len(emails)))
+
+		return nil
+	})
+}
+
+func (m Model) sendFeedbackEmailWithPop(e email.FeedbackEmail) error {
+	// Build pop arguments
+	args := []string{}
+
+	// Add recipient
+	args = append(args, "--to", e.StudentEmail)
+
+	// Add subject
+	args = append(args, "--subject", e.Subject)
+
+	// Add body
+	args = append(args, "--body", e.Body)
+
+	// Add from if configured
+	if m.cfg.SenderEmail != "" && m.cfg.SenderEmail != "teacher@example.com" {
+		args = append(args, "--from", m.cfg.SenderEmail)
+	}
+
+	// Add attachments
+	for _, attachment := range e.Attachments {
+		args = append(args, "--attach", attachment)
+	}
+
+	// Note: pop sends by default when --preview is not specified
+	// No additional flag needed
+
+	cmd := exec.Command("pop", args...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("pop command failed: %w (output: %s)", err, string(output))
+	}
+
+	return nil
 }

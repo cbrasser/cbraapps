@@ -4,7 +4,9 @@ import (
 	"cbrateach/internal/models"
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -56,6 +58,10 @@ func (m Model) updateClassbookView(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.cursor = 0
 		m.state = testListView
 		return m, nil
+
+	case "g":
+		// Export final grades
+		return m, m.exportFinalGrades()
 	}
 
 	return m, nil
@@ -93,6 +99,7 @@ func (m Model) renderClassbookView() string {
 		"x: delete student",
 		"d: edit details",
 		"t: tests",
+		"g: export final grades",
 		"esc: back",
 	}
 	helpText := helpStyle.Render(strings.Join(help, " • "))
@@ -361,6 +368,51 @@ func (m Model) deleteStudent() tea.Cmd {
 
 		// Save changes
 		m.storage.SaveCourses(m.courses)
+
+		return nil
+	})
+}
+
+func (m Model) exportFinalGrades() tea.Cmd {
+	return tea.ExecProcess(exec.Command("true"), func(err error) tea.Msg {
+		if m.selectedCourse >= len(m.courses) {
+			return nil
+		}
+
+		course := m.courses[m.selectedCourse]
+
+		// Ask user to choose format
+		format, err := ShowExportFormatChoice()
+		if err != nil {
+			return nil
+		}
+
+		// Generate filename with timestamp
+		timestamp := time.Now().Format("2006-01-02")
+		sanitizedName := strings.ToLower(strings.ReplaceAll(course.Name, " ", "_"))
+		var outputPath string
+
+		switch format {
+		case "csv":
+			filename := fmt.Sprintf("%s_final_grades_%s.csv", sanitizedName, timestamp)
+			outputPath = filepath.Join(m.cfg.ExportDir, filename)
+			err = m.storage.ExportGrades(course.ID, outputPath)
+		case "xlsx":
+			filename := fmt.Sprintf("%s_final_grades_%s.xlsx", sanitizedName, timestamp)
+			outputPath = filepath.Join(m.cfg.ExportDir, filename)
+			err = m.storage.ExportGradesXLSX(course.ID, outputPath)
+		default:
+			return nil
+		}
+
+		if err != nil {
+			// Show error message
+			ShowMessage("Export Error", err.Error())
+			return nil
+		}
+
+		// Show success message
+		ShowMessage("Export Successful", fmt.Sprintf("Grades exported to:\n%s", outputPath))
 
 		return nil
 	})

@@ -25,6 +25,11 @@ func main() {
 		log.Fatalf("Failed to create directories: %v", err)
 	}
 
+	// Ensure default email template exists
+	if err := cfg.EnsureDefaultEmailTemplate(); err != nil {
+		log.Fatalf("Failed to create default email template: %v", err)
+	}
+
 	// Handle subcommands
 	if len(os.Args) > 1 {
 		switch os.Args[1] {

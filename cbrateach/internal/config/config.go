@@ -8,20 +8,21 @@ import (
 )
 
 type Config struct {
-	DataDir       string `toml:"data_dir"`
+	DataDir       string `toml:"data_dir"`        // Hidden directory for internal app data
 	CourseNotesDir string `toml:"course_notes_dir"`
-	ReviewsDir    string `toml:"reviews_dir"`
+	ExportDir     string `toml:"export_dir"`      // Directory for user-facing exports
 	SenderEmail   string `toml:"sender_email"`
 }
 
 func DefaultConfig() Config {
 	homeDir, _ := os.UserHomeDir()
 	configBase := filepath.Join(homeDir, ".config", "cbraapps")
+	dataDir := filepath.Join(configBase, ".cbrateach") // Hidden directory
 
 	return Config{
-		DataDir:       filepath.Join(configBase, "cbrateach", "data"),
+		DataDir:       dataDir,
 		CourseNotesDir: filepath.Join(configBase, "cbrateach", "notes"),
-		ReviewsDir:    filepath.Join(configBase, "cbrateach", "reviews"),
+		ExportDir:     filepath.Join(configBase, "cbrateach", "exports"),
 		SenderEmail:   "teacher@example.com",
 	}
 }
@@ -48,9 +49,39 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 
-	var cfg Config
-	if err := toml.Unmarshal(data, &cfg); err != nil {
+	// Use a temporary struct to handle migration from old config
+	type OldConfig struct {
+		DataDir        string `toml:"data_dir"`
+		CourseNotesDir string `toml:"course_notes_dir"`
+		ReviewsDir     string `toml:"reviews_dir"`     // Old field
+		ExportDir      string `toml:"export_dir"`      // New field
+		SenderEmail    string `toml:"sender_email"`
+	}
+
+	var oldCfg OldConfig
+	if err := toml.Unmarshal(data, &oldCfg); err != nil {
 		return Config{}, err
+	}
+
+	// Migrate: if reviews_dir is set but export_dir is not, use reviews_dir as export_dir
+	cfg := Config{
+		DataDir:        oldCfg.DataDir,
+		CourseNotesDir: oldCfg.CourseNotesDir,
+		ExportDir:      oldCfg.ExportDir,
+		SenderEmail:    oldCfg.SenderEmail,
+	}
+
+	if cfg.ExportDir == "" && oldCfg.ReviewsDir != "" {
+		cfg.ExportDir = oldCfg.ReviewsDir
+		// Save migrated config
+		Save(cfg)
+	}
+
+	// Ensure defaults for empty fields
+	if cfg.DataDir == "" {
+		cfg = DefaultConfig()
+		cfg.SenderEmail = oldCfg.SenderEmail // Keep existing sender email
+		Save(cfg)
 	}
 
 	return cfg, nil
@@ -73,11 +104,54 @@ func Save(cfg Config) error {
 }
 
 func (c Config) EnsureDirectories() error {
-	dirs := []string{c.DataDir, c.CourseNotesDir, c.ReviewsDir}
+	dirs := []string{c.DataDir, c.CourseNotesDir, c.ExportDir}
 	for _, dir := range dirs {
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return err
 		}
 	}
+
+	// Ensure subdirectories in data_dir
+	subdirs := []string{
+		filepath.Join(c.DataDir, "reviews"),
+		filepath.Join(c.DataDir, "mail_templates"),
+	}
+	for _, dir := range subdirs {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return err
+		}
+	}
+
 	return nil
+}
+
+// ReviewsDir returns the path to the reviews directory within data_dir
+func (c Config) ReviewsDir() string {
+	return filepath.Join(c.DataDir, "reviews")
+}
+
+// MailTemplatesDir returns the path to the mail templates directory within data_dir
+func (c Config) MailTemplatesDir() string {
+	return filepath.Join(c.DataDir, "mail_templates")
+}
+
+// EnsureDefaultEmailTemplate creates a default email template if one doesn't exist
+func (c Config) EnsureDefaultEmailTemplate() error {
+	templatePath := filepath.Join(c.MailTemplatesDir(), "feedback_template.txt")
+
+	// Check if template already exists
+	if _, err := os.Stat(templatePath); err == nil {
+		return nil // Template already exists
+	}
+
+	// Create default template
+	defaultTemplate := `Dear {{StudentName}},
+
+Please find attached your feedback for the test "{{TestName}}" in course {{CourseName}}.
+
+Your grade: {{Grade}}
+
+Best regards`
+
+	return os.WriteFile(templatePath, []byte(defaultTemplate), 0644)
 }
