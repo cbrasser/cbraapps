@@ -3,11 +3,14 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"sort"
 	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+
+	"mytuiapp/internal/notify"
 )
 
 func main() {
@@ -19,12 +22,27 @@ func main() {
 	listFlag := flag.String("list", "", "List events for a specific day (format: YYYY-MM-DD, 'today', 'tomorrow', or empty for today)")
 	listTodayFlag := flag.Bool("today", false, "List today's events (shortcut for --list today)")
 	jsonFlag := flag.Bool("json", false, "Output in JSON format (use with --list or --today)")
+	daemonFlag := flag.Bool("daemon", false, "Run notification daemon in the background")
 	flag.Parse()
 
 	config, _ := loadConfig()
 	var radicaleConfig *RadicaleConfig
 	if config != nil && config.Radicale != nil {
 		radicaleConfig = config.Radicale
+	}
+
+	// Handle --daemon flag
+	if *daemonFlag {
+		if config == nil || config.Notifications == nil {
+			fmt.Println("Error: No notification configuration found")
+			return
+		}
+		if !config.Notifications.Enabled {
+			fmt.Println("Error: Notifications are disabled in config")
+			return
+		}
+		runDaemon(config.Notifications, radicaleConfig)
+		return
 	}
 
 	// Handle --list and --today flags
@@ -193,4 +211,43 @@ func formatDuration(d time.Duration) string {
 		return fmt.Sprintf("%dh", hours)
 	}
 	return fmt.Sprintf("%dh%dm", hours, minutes)
+}
+
+// runDaemon starts the notification daemon
+func runDaemon(notifConfig *NotificationConfig, radicaleConfig *RadicaleConfig) {
+	// Create event loader function that wraps loadAllCalendars
+	loader := func() ([]notify.Event, error) {
+		events, _, _, err := loadAllCalendars(radicaleConfig)
+		if err != nil {
+			return nil, err
+		}
+
+		// Convert main.Event to notify.Event
+		notifyEvents := make([]notify.Event, len(events))
+		for i, e := range events {
+			notifyEvents[i] = notify.Event{
+				Summary:      e.Summary,
+				Start:        e.Start,
+				End:          e.End,
+				Description:  e.Description,
+				CalendarName: e.CalendarName,
+				UID:          e.UID,
+			}
+		}
+		return notifyEvents, nil
+	}
+
+	// Create notify config
+	config := &notify.NotificationConfig{
+		Enabled:        notifConfig.Enabled,
+		CheckInterval:  notifConfig.CheckInterval,
+		AdvanceNotice:  notifConfig.AdvanceNotice,
+		ReloadInterval: notifConfig.ReloadInterval,
+	}
+
+	// Create and run daemon
+	daemon := notify.NewDaemon(config, loader)
+	if err := daemon.Run(); err != nil {
+		log.Fatalf("Daemon error: %v", err)
+	}
 }

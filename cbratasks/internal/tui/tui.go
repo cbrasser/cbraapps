@@ -3,11 +3,15 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"cbratasks/internal/config"
 	"cbratasks/internal/storage"
 	"cbratasks/internal/task"
 
+	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -23,6 +27,8 @@ const (
 	viewAddTask
 	viewEditNote
 	viewViewNote
+	viewFocus
+	viewArchive
 )
 
 // Messages
@@ -35,6 +41,217 @@ type initialSyncDoneMsg struct {
 }
 
 type startSyncMsg struct{}
+
+// focusKeyMap defines keybindings for focus mode
+type focusKeyMap struct {
+	Complete key.Binding
+	Exit     key.Binding
+	Up       key.Binding
+	Down     key.Binding
+	Filter   key.Binding
+	Help     key.Binding
+}
+
+// ShortHelp returns keybindings to be shown in the mini help view.
+func (k focusKeyMap) ShortHelp() []key.Binding {
+	return []key.Binding{k.Exit, k.Help}
+}
+
+// FullHelp returns keybindings for the expanded help view.
+func (k focusKeyMap) FullHelp() [][]key.Binding {
+	return [][]key.Binding{
+		{k.Up, k.Down},
+		{k.Complete, k.Filter, k.Exit},
+	}
+}
+
+var focusKeys = focusKeyMap{
+	Complete: key.NewBinding(
+		key.WithKeys("enter", "x", " "),
+		key.WithHelp("enter/x/space", "complete task"),
+	),
+	Exit: key.NewBinding(
+		key.WithKeys("q", "esc", "f"),
+		key.WithHelp("q", "quit focus mode"),
+	),
+	Up: key.NewBinding(
+		key.WithKeys("up", "k"),
+		key.WithHelp("↑/k", "up"),
+	),
+	Down: key.NewBinding(
+		key.WithKeys("down", "j"),
+		key.WithHelp("↓/j", "down"),
+	),
+	Filter: key.NewBinding(
+		key.WithKeys("/"),
+		key.WithHelp("/", "filter"),
+	),
+	Help: key.NewBinding(
+		key.WithKeys("?"),
+		key.WithHelp("?", "more"),
+	),
+}
+
+// listKeyMap defines keybindings for main list view
+type listKeyMap struct {
+	Toggle      key.Binding
+	Delete      key.Binding
+	AddTask     key.Binding
+	Search      key.Binding
+	EditNote    key.Binding
+	ViewNote    key.Binding
+	Focus       key.Binding
+	Archive     key.Binding
+	ArchiveAll  key.Binding
+	ViewArchive key.Binding
+	Sync        key.Binding
+	Quit        key.Binding
+	Help        key.Binding
+}
+
+// ShortHelp returns keybindings to be shown in the mini help view.
+func (k listKeyMap) ShortHelp() []key.Binding {
+	return []key.Binding{k.Quit, k.Help}
+}
+
+// FullHelp returns keybindings for the expanded help view.
+func (k listKeyMap) FullHelp() [][]key.Binding {
+	return [][]key.Binding{
+		{k.Toggle, k.AddTask, k.Search, k.Focus},
+		{k.Archive, k.ArchiveAll, k.ViewArchive, k.Sync},
+		{k.EditNote, k.ViewNote, k.Delete, k.Quit},
+	}
+}
+
+var listKeys = listKeyMap{
+	Toggle: key.NewBinding(
+		key.WithKeys("x"),
+		key.WithHelp("x", "toggle complete"),
+	),
+	Delete: key.NewBinding(
+		key.WithKeys("d"),
+		key.WithHelp("d", "delete"),
+	),
+	AddTask: key.NewBinding(
+		key.WithKeys("a"),
+		key.WithHelp("a", "add task"),
+	),
+	Search: key.NewBinding(
+		key.WithKeys("/"),
+		key.WithHelp("/", "search"),
+	),
+	EditNote: key.NewBinding(
+		key.WithKeys("n"),
+		key.WithHelp("n", "edit note"),
+	),
+	ViewNote: key.NewBinding(
+		key.WithKeys("tab"),
+		key.WithHelp("tab", "view note"),
+	),
+	Focus: key.NewBinding(
+		key.WithKeys("f"),
+		key.WithHelp("f", "focus mode"),
+	),
+	Archive: key.NewBinding(
+		key.WithKeys("z"),
+		key.WithHelp("z", "archive task"),
+	),
+	ArchiveAll: key.NewBinding(
+		key.WithKeys("Z"),
+		key.WithHelp("Z", "archive all"),
+	),
+	ViewArchive: key.NewBinding(
+		key.WithKeys("A"),
+		key.WithHelp("A", "view archive"),
+	),
+	Sync: key.NewBinding(
+		key.WithKeys("s"),
+		key.WithHelp("s", "sync"),
+	),
+	Quit: key.NewBinding(
+		key.WithKeys("q", "ctrl+c"),
+		key.WithHelp("q", "quit"),
+	),
+	Help: key.NewBinding(
+		key.WithKeys("?"),
+		key.WithHelp("?", "more"),
+	),
+}
+
+// archiveKeyMap defines keybindings for archive view
+type archiveKeyMap struct {
+	ViewArchive key.Binding
+	Filter      key.Binding
+	Quit        key.Binding
+	Help        key.Binding
+}
+
+// ShortHelp returns keybindings to be shown in the mini help view.
+func (k archiveKeyMap) ShortHelp() []key.Binding {
+	return []key.Binding{k.Quit, k.Help}
+}
+
+// FullHelp returns keybindings for the expanded help view.
+func (k archiveKeyMap) FullHelp() [][]key.Binding {
+	return [][]key.Binding{
+		{k.ViewArchive, k.Filter, k.Quit},
+	}
+}
+
+var archiveKeys = archiveKeyMap{
+	ViewArchive: key.NewBinding(
+		key.WithKeys("A"),
+		key.WithHelp("A", "back to tasks"),
+	),
+	Filter: key.NewBinding(
+		key.WithKeys("/"),
+		key.WithHelp("/", "filter"),
+	),
+	Quit: key.NewBinding(
+		key.WithKeys("q", "ctrl+c"),
+		key.WithHelp("q", "quit"),
+	),
+	Help: key.NewBinding(
+		key.WithKeys("?"),
+		key.WithHelp("?", "more"),
+	),
+}
+
+// focusItem implements list.Item for the focus mode list
+type focusItem struct {
+	task *task.Task
+}
+
+func (i focusItem) FilterValue() string { return i.task.Title }
+func (i focusItem) Title() string       { return i.task.Title }
+func (i focusItem) Description() string {
+	parts := []string{}
+	if i.task.DueDate != nil {
+		parts = append(parts, i.task.DueString())
+	}
+	if len(i.task.Tags) > 0 {
+		parts = append(parts, strings.Join(i.task.Tags, ", "))
+	}
+	return strings.Join(parts, " • ")
+}
+
+// archiveItem implements list.Item for the archive list
+type archiveItem struct {
+	task *task.Task
+}
+
+func (i archiveItem) FilterValue() string { return i.task.Title }
+func (i archiveItem) Title() string       { return i.task.Title }
+func (i archiveItem) Description() string {
+	parts := []string{}
+	if i.task.CompletedAt != nil {
+		parts = append(parts, "Completed: "+i.task.CompletedAt.Format("Jan 02, 2006"))
+	}
+	if len(i.task.Tags) > 0 {
+		parts = append(parts, strings.Join(i.task.Tags, ", "))
+	}
+	return strings.Join(parts, " • ")
+}
 
 type Model struct {
 	config      *config.Config
@@ -54,6 +271,10 @@ type Model struct {
 	statusMsg   string
 	quitting    bool
 	showArchive bool
+	focusList   list.Model
+	focusHelp   help.Model
+	listHelp    help.Model
+	archiveList list.Model
 }
 
 // Styles
@@ -138,6 +359,28 @@ func NewModel(cfg *config.Config, store *storage.Storage) Model {
 	sp.Spinner = spinner.Dot
 	sp.Style = spinnerStyle
 
+	// Focus list
+	fl := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
+	fl.Title = "Focus Mode"
+	fl.SetShowStatusBar(false)
+	fl.SetFilteringEnabled(true)
+	fl.Styles.Title = titleStyle
+
+	// Archive list
+	al := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
+	al.Title = "Archive"
+	al.SetShowStatusBar(false)
+	al.SetFilteringEnabled(true)
+	al.Styles.Title = titleStyle
+
+	// Focus help
+	fh := help.New()
+	fh.ShowAll = false
+
+	// List help
+	lh := help.New()
+	lh.ShowAll = false
+
 	return Model{
 		config:      cfg,
 		storage:     store,
@@ -146,6 +389,10 @@ func NewModel(cfg *config.Config, store *storage.Storage) Model {
 		addInput:    ai,
 		noteArea:    na,
 		spinner:     sp,
+		focusList:   fl,
+		focusHelp:   fh,
+		listHelp:    lh,
+		archiveList: al,
 	}
 }
 
@@ -157,6 +404,55 @@ func (m Model) Init() tea.Cmd {
 		}
 	}
 	return nil
+}
+
+// getFocusTasks returns tasks due today, tomorrow, or overdue (incomplete only)
+func (m Model) getFocusTasks() []*task.Task {
+	var focusTasks []*task.Task
+	now := time.Now()
+	tomorrow := now.AddDate(0, 0, 1)
+
+	for _, t := range m.tasks {
+		if t.Completed {
+			continue
+		}
+		if t.DueDate == nil {
+			continue
+		}
+
+		due := *t.DueDate
+		// Check if overdue, due today, or due tomorrow
+		if due.Before(now) ||
+		   (due.Year() == now.Year() && due.YearDay() == now.YearDay()) ||
+		   (due.Year() == tomorrow.Year() && due.YearDay() == tomorrow.YearDay()) {
+			focusTasks = append(focusTasks, t)
+		}
+	}
+
+	return focusTasks
+}
+
+// enterFocusMode sets up the focus mode view
+func (m *Model) enterFocusMode() {
+	focusTasks := m.getFocusTasks()
+	items := make([]list.Item, len(focusTasks))
+	for i, t := range focusTasks {
+		items[i] = focusItem{task: t}
+	}
+	m.focusList.SetItems(items)
+	m.focusList.SetSize(m.width, m.height-4)
+	m.view = viewFocus
+}
+
+// enterArchiveMode sets up the archive view with list component
+func (m *Model) enterArchiveMode() {
+	archivedTasks := m.storage.GetArchivedTasks()
+	items := make([]list.Item, len(archivedTasks))
+	for i, t := range archivedTasks {
+		items[i] = archiveItem{task: t}
+	}
+	m.archiveList.SetItems(items)
+	m.archiveList.SetSize(m.width, m.height-4)
 }
 
 func (m Model) doInitialSync() tea.Cmd {
@@ -175,6 +471,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		m.noteArea.SetWidth(min(60, m.width-10))
 		m.noteArea.SetHeight(min(10, m.height-15))
+		m.focusList.SetSize(m.width, m.height-4)
+		m.archiveList.SetSize(m.width, m.height-4)
 
 	case spinner.TickMsg:
 		if m.syncing {
@@ -219,10 +517,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleNoteInput(msg)
 		case viewViewNote:
 			return m.handleViewNote(msg)
+		case viewFocus:
+			return m.handleFocusMode(msg)
+		case viewArchive:
+			return m.handleArchiveMode(msg)
 		}
 
 		// List view keybindings
 		switch key {
+		case "?":
+			// Toggle help
+			m.listHelp.ShowAll = !m.listHelp.ShowAll
+			return m, nil
+
 		case m.config.Hotkeys.Quit, "ctrl+c":
 			m.quitting = true
 			return m, tea.Quit
@@ -360,13 +667,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Toggle archive view
 			m.showArchive = !m.showArchive
 			if m.showArchive {
-				m.tasks = m.storage.GetArchivedTasks()
+				m.enterArchiveMode()
+				m.view = viewArchive
 				m.statusMsg = "Viewing archive"
 			} else {
 				m.tasks = m.storage.GetTasks()
 				m.statusMsg = "Viewing active tasks"
 			}
 			m.cursor = 0
+			return m, nil
+
+		case "f":
+			// Enter focus mode
+			m.enterFocusMode()
+			return m, nil
 		}
 	}
 
@@ -506,6 +820,78 @@ func (m Model) handleViewNote(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m Model) handleFocusMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch {
+	case key.Matches(msg, focusKeys.Exit):
+		// Exit focus mode
+		m.view = viewList
+		m.statusMsg = "Exited focus mode"
+		return m, nil
+
+	case key.Matches(msg, focusKeys.Help):
+		// Toggle help
+		m.focusHelp.ShowAll = !m.focusHelp.ShowAll
+		return m, nil
+
+	case key.Matches(msg, focusKeys.Complete):
+		// Mark selected task as complete
+		if selectedItem, ok := m.focusList.SelectedItem().(focusItem); ok {
+			t := selectedItem.task
+
+			// Start sync spinner if this is a radicale task
+			if t.ListName == "radicale" && m.storage.IsSyncEnabled() {
+				m.syncing = true
+			}
+
+			m.storage.ToggleCompleteWithSync(t.ID)
+			m.tasks = m.storage.GetTasks()
+			m.statusMsg = "✓ Task completed!"
+			m.syncing = false
+
+			// Refresh focus list with remaining tasks
+			m.enterFocusMode()
+			return m, nil
+		}
+
+	default:
+		// Pass other keys to the list component for navigation
+		var cmd tea.Cmd
+		m.focusList, cmd = m.focusList.Update(msg)
+		return m, cmd
+	}
+
+	return m, nil
+}
+
+func (m Model) handleArchiveMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch {
+	case key.Matches(msg, archiveKeys.ViewArchive):
+		// Exit archive view
+		m.showArchive = false
+		m.view = viewList
+		m.tasks = m.storage.GetTasks()
+		m.statusMsg = "Viewing active tasks"
+		return m, nil
+
+	case key.Matches(msg, archiveKeys.Help):
+		// Toggle help
+		m.listHelp.ShowAll = !m.listHelp.ShowAll
+		return m, nil
+
+	case key.Matches(msg, archiveKeys.Quit):
+		m.quitting = true
+		return m, tea.Quit
+
+	default:
+		// Pass other keys to the list component for navigation
+		var cmd tea.Cmd
+		m.archiveList, cmd = m.archiveList.Update(msg)
+		return m, cmd
+	}
+
+	return m, nil
+}
+
 // parseTaskInput parses input like "Buy milk +shopping +1d"
 func (m Model) parseTaskInput(input string) *task.Task {
 	parts := strings.Fields(input)
@@ -550,6 +936,26 @@ func (m Model) View() string {
 	}
 
 	var b strings.Builder
+
+	// Focus mode view
+	if m.view == viewFocus {
+		b.WriteString(m.focusList.View() + "\n")
+		if m.statusMsg != "" {
+			b.WriteString(statusStyle.Render(m.statusMsg) + "\n")
+		}
+		b.WriteString(m.focusHelp.View(focusKeys))
+		return b.String()
+	}
+
+	// Archive view
+	if m.view == viewArchive {
+		b.WriteString(m.archiveList.View() + "\n")
+		if m.statusMsg != "" {
+			b.WriteString(statusStyle.Render(m.statusMsg) + "\n")
+		}
+		b.WriteString(m.listHelp.View(archiveKeys))
+		return b.String()
+	}
 
 	// Title
 	title := "📋 Tasks"
@@ -608,17 +1014,11 @@ func (m Model) View() string {
 	}
 
 	// Help
-	var help string
 	if m.showArchive {
-		help = fmt.Sprintf("A: back to tasks • %s: quit",
-			m.config.Hotkeys.Quit)
+		b.WriteString(m.listHelp.View(archiveKeys))
 	} else {
-		help = fmt.Sprintf("x: toggle • z: archive • Z: archive all • A: view archive • %s: add • %s: search • s: sync • %s: quit",
-			m.config.Hotkeys.AddTask,
-			m.config.Hotkeys.Search,
-			m.config.Hotkeys.Quit)
+		b.WriteString(m.listHelp.View(listKeys))
 	}
-	b.WriteString(helpStyle.Render(help))
 
 	return b.String()
 }

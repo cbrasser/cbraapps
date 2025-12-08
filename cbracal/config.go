@@ -34,6 +34,13 @@ const defaultConfigTOML = `# cbracal - Calendar Configuration
 
 # Local .ics files in the config directory
 # local_calendars = ["work.ics", "personal.ics"]
+
+# Notification daemon settings (for cbracal --daemon mode)
+[notifications]
+enabled = true
+check_interval = 60          # seconds between checking for upcoming events
+advance_notice = [15, 5, 1]  # minutes before event to send notifications
+reload_interval = 5          # minutes between full calendar reloads
 `
 
 func getConfigDir() (string, error) {

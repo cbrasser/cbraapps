@@ -63,10 +63,18 @@ type RadicaleConfig struct {
 	Password  string `toml:"password"`
 }
 
+type NotificationConfig struct {
+	Enabled        bool  `toml:"enabled"`
+	CheckInterval  int   `toml:"check_interval"`  // seconds between calendar checks
+	AdvanceNotice  []int `toml:"advance_notice"`  // minutes before event to notify
+	ReloadInterval int   `toml:"reload_interval"` // minutes between full calendar reloads
+}
+
 type Config struct {
-	Radicale       *RadicaleConfig  `toml:"radicale,omitempty"`
-	Calendars      []CalendarConfig `toml:"calendars"`
-	LocalCalendars []string         `toml:"local_calendars,omitempty"`
+	Radicale       *RadicaleConfig     `toml:"radicale,omitempty"`
+	Calendars      []CalendarConfig    `toml:"calendars"`
+	LocalCalendars []string            `toml:"local_calendars,omitempty"`
+	Notifications  *NotificationConfig `toml:"notifications,omitempty"`
 }
 
 type CalDAVCalendar struct {
