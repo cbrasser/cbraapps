@@ -8,10 +8,12 @@ import (
 )
 
 type Config struct {
-	DataDir       string `toml:"data_dir"`        // Hidden directory for internal app data
+	DataDir        string `toml:"data_dir"`         // Hidden directory for internal app data
 	CourseNotesDir string `toml:"course_notes_dir"`
-	ExportDir     string `toml:"export_dir"`      // Directory for user-facing exports
-	SenderEmail   string `toml:"sender_email"`
+	ExportDir      string `toml:"export_dir"`       // Directory for user-facing exports
+	FeedbackDir    string `toml:"feedback_dir"`     // Directory for feedback files (export/email)
+	SenderEmail    string `toml:"sender_email"`
+	BCCEmail       string `toml:"bcc_email"`        // Email to BCC on first feedback email
 }
 
 func DefaultConfig() Config {
@@ -20,10 +22,12 @@ func DefaultConfig() Config {
 	dataDir := filepath.Join(configBase, ".cbrateach") // Hidden directory
 
 	return Config{
-		DataDir:       dataDir,
+		DataDir:        dataDir,
 		CourseNotesDir: filepath.Join(configBase, "cbrateach", "notes"),
-		ExportDir:     filepath.Join(configBase, "cbrateach", "exports"),
-		SenderEmail:   "teacher@example.com",
+		ExportDir:      filepath.Join(configBase, "cbrateach", "exports"),
+		FeedbackDir:    filepath.Join(configBase, "cbrateach", "feedback"),
+		SenderEmail:    "teacher@example.com",
+		BCCEmail:       "claudio.brasser@gymneufeld.ch",
 	}
 }
 
@@ -55,7 +59,10 @@ func Load() (Config, error) {
 		CourseNotesDir string `toml:"course_notes_dir"`
 		ReviewsDir     string `toml:"reviews_dir"`     // Old field
 		ExportDir      string `toml:"export_dir"`      // New field
+		FeedbackDir    string `toml:"feedback_dir"`    // New field
 		SenderEmail    string `toml:"sender_email"`
+		CCEmail        string `toml:"cc_email"`        // Old field
+		BCCEmail       string `toml:"bcc_email"`       // New field
 	}
 
 	var oldCfg OldConfig
@@ -63,12 +70,20 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 
+	// Migrate: if cc_email is set but bcc_email is not, use cc_email as bcc_email
+	bccEmail := oldCfg.BCCEmail
+	if bccEmail == "" && oldCfg.CCEmail != "" {
+		bccEmail = oldCfg.CCEmail
+	}
+
 	// Migrate: if reviews_dir is set but export_dir is not, use reviews_dir as export_dir
 	cfg := Config{
 		DataDir:        oldCfg.DataDir,
 		CourseNotesDir: oldCfg.CourseNotesDir,
 		ExportDir:      oldCfg.ExportDir,
+		FeedbackDir:    oldCfg.FeedbackDir,
 		SenderEmail:    oldCfg.SenderEmail,
+		BCCEmail:       bccEmail,
 	}
 
 	if cfg.ExportDir == "" && oldCfg.ReviewsDir != "" {
@@ -104,7 +119,7 @@ func Save(cfg Config) error {
 }
 
 func (c Config) EnsureDirectories() error {
-	dirs := []string{c.DataDir, c.CourseNotesDir, c.ExportDir}
+	dirs := []string{c.DataDir, c.CourseNotesDir, c.ExportDir, c.FeedbackDir}
 	for _, dir := range dirs {
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return err

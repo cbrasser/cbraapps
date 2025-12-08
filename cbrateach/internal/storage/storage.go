@@ -186,9 +186,9 @@ func (s *Storage) CreateCourseNote(course *models.Course) error {
 
 func sanitizeFilename(s string) string {
 	s = strings.ToLower(s)
-	s = strings.ReplaceAll(s, " ", "_")
-	s = strings.ReplaceAll(s, "/", "_")
-	s = strings.ReplaceAll(s, "\\", "_")
+	s = strings.ReplaceAll(s, " ", "")
+	s = strings.ReplaceAll(s, "/", "")
+	s = strings.ReplaceAll(s, "\\", "")
 	return s
 }
 

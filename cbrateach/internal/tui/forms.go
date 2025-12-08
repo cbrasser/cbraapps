@@ -2,7 +2,6 @@ package tui
 
 import (
 	"errors"
-	"os"
 
 	"cbrateach/internal/models"
 
@@ -242,34 +241,14 @@ func ShowMessage(title, message string) error {
 }
 
 type FeedbackFormResult struct {
-	FeedbackDir   string
 	CustomMessage string
 }
 
-func ShowFeedbackForm() (*FeedbackFormResult, error) {
+func ShowCustomMessageForm() (*FeedbackFormResult, error) {
 	result := &FeedbackFormResult{}
-
-	// Get home directory for default
-	homeDir, _ := os.UserHomeDir()
 
 	form := huh.NewForm(
 		huh.NewGroup(
-			huh.NewInput().
-				Title("Feedback Files Directory").
-				Description("Directory containing feedback files (named with student names)").
-				Value(&result.FeedbackDir).
-				Placeholder(homeDir).
-				Validate(func(s string) error {
-					if s == "" {
-						return errors.New("directory is required")
-					}
-					// Check if directory exists
-					if _, err := os.Stat(s); os.IsNotExist(err) {
-						return errors.New("directory does not exist")
-					}
-					return nil
-				}),
-
 			huh.NewText().
 				Title("Custom Message (optional)").
 				Description("Will replace {{CustomMessage}} in template").
@@ -314,4 +293,71 @@ func ShowConfirmation(title, message, confirmLabel, cancelLabel string) (bool, e
 	}
 
 	return confirmed, nil
+}
+
+type EmailPreviewAction int
+
+const (
+	EmailPreviewSend EmailPreviewAction = iota
+	EmailPreviewEdit
+	EmailPreviewCancel
+)
+
+type EmailPreviewResult struct {
+	Action        EmailPreviewAction
+	CustomMessage string
+}
+
+func ShowEmailPreview(sampleEmail, currentMessage string, totalCount int) (*EmailPreviewResult, error) {
+	var action string
+	result := &EmailPreviewResult{
+		CustomMessage: currentMessage,
+	}
+
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewNote().
+				Title("Email Preview").
+				Description(sampleEmail),
+			huh.NewNote().
+				Title("").
+				Description("---\nThis is a preview of the first email. All emails will follow this format."),
+			huh.NewSelect[string]().
+				Title("What would you like to do?").
+				Options(
+					huh.NewOption("Send all emails now", "send"),
+					huh.NewOption("Edit custom message and preview again", "edit"),
+					huh.NewOption("Cancel", "cancel"),
+				).
+				Value(&action),
+		),
+	)
+
+	if err := form.Run(); err != nil {
+		return nil, err
+	}
+
+	switch action {
+	case "send":
+		result.Action = EmailPreviewSend
+	case "edit":
+		result.Action = EmailPreviewEdit
+		// Show edit form
+		editForm := huh.NewForm(
+			huh.NewGroup(
+				huh.NewText().
+					Title("Custom Message").
+					Description("Will replace {{CustomMessage}} in template").
+					Value(&result.CustomMessage).
+					Lines(5),
+			),
+		)
+		if err := editForm.Run(); err != nil {
+			return nil, err
+		}
+	case "cancel":
+		result.Action = EmailPreviewCancel
+	}
+
+	return result, nil
 }

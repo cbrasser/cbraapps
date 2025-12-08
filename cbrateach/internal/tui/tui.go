@@ -4,6 +4,7 @@ import (
 	"cbrateach/internal/config"
 	"cbrateach/internal/models"
 	"cbrateach/internal/storage"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
@@ -56,6 +57,12 @@ type Model struct {
 	importTopic  string
 	importWeight string
 
+	// Confirmation dialog state
+	showingConfirmation  bool
+	confirmationTitle    string
+	confirmationMessage  string
+	confirmationCallback func(Model) (Model, tea.Cmd)
+
 	// UI dimensions
 	width  int
 	height int
@@ -85,6 +92,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		// Pass window size to import form if active
+		if m.state == importTestView && m.importFilePickerForm != nil {
+			form, cmd := m.importFilePickerForm.Update(msg)
+			if f, ok := form.(*huh.Form); ok {
+				m.importFilePickerForm = f
+			}
+			return m, cmd
+		}
 		return m, nil
 
 	case loadTestsMsg:
@@ -92,7 +107,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.state = testListView // Ensure we are in test list view? Or stay in current if appropriate.
 		return m, nil
 
+	case testImportedMsg:
+		// Test was imported, reload tests and go to test list
+		m.state = testListView
+		return m, m.loadTestsCmd(msg.courseID)
+
 	case tea.KeyMsg:
+		// Handle confirmation dialog if showing
+		if m.showingConfirmation {
+			return m.updateConfirmationDialog(msg)
+		}
+
 		switch m.state {
 		case listView:
 			return m.updateListView(msg)
@@ -107,12 +132,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	// Pass all other non-key messages to import view if active
+	// (Huh forms need mouse events, window size, etc.)
+	if m.state == importTestView && m.importStep == 0 {
+		return m.updateImportViewGeneric(msg)
+	}
+
 	return m, nil
 }
 
 func (m Model) View() string {
 	if m.err != nil {
 		return errorStyle.Render("Error: " + m.err.Error())
+	}
+
+	// Show confirmation dialog on top if active
+	if m.showingConfirmation {
+		return m.renderConfirmationDialog()
 	}
 
 	switch m.state {
@@ -159,4 +195,36 @@ func (m Model) loadTestsCmd(courseID string) tea.Cmd {
 		}
 		return loadTestsMsg(tests)
 	}
+}
+
+// Confirmation dialog helpers
+func (m Model) updateConfirmationDialog(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "y", "Y", "enter":
+		// User confirmed
+		m.showingConfirmation = false
+		if m.confirmationCallback != nil {
+			return m.confirmationCallback(m)
+		}
+		return m, nil
+
+	case "n", "N", "esc":
+		// User cancelled
+		m.showingConfirmation = false
+		m.confirmationCallback = nil
+		return m, nil
+	}
+
+	return m, nil
+}
+
+func (m Model) renderConfirmationDialog() string {
+	var content strings.Builder
+
+	content.WriteString("\n\n")
+	content.WriteString(titleStyle.Render(m.confirmationTitle) + "\n\n")
+	content.WriteString(m.confirmationMessage + "\n\n")
+	content.WriteString(helpStyle.Render("y: Yes • n: No • esc: Cancel"))
+
+	return baseStyle.Render(content.String())
 }

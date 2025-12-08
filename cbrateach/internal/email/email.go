@@ -30,65 +30,53 @@ func ProcessTemplate(template string, studentName, testName, courseName string, 
 	return processed
 }
 
-// FindFeedbackFiles finds all files in the directory that match the student's name
-// Uses fuzzy matching: removes spaces, dashes, and does case-insensitive comparison
-func FindFeedbackFiles(directory, studentName string) ([]string, error) {
+// FindFeedbackFiles finds all files in the directory that match the student's email
+// Uses exact matching based on email prefix
+func FindFeedbackFiles(directory, studentEmail string) ([]string, error) {
 	files, err := os.ReadDir(directory)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read directory: %w", err)
 	}
 
-	// Normalize student name for matching
-	// Extract just the name part, removing any extra info like grades (e.g., "8.5")
-	// Split on common delimiters and keep the main name parts
-	nameParts := strings.Fields(studentName)
+	// Generate expected filename from email: get part before @, replace dots with dashes
+	emailPrefix := strings.Split(studentEmail, "@")[0]
+	emailPrefix = strings.ReplaceAll(emailPrefix, ".", "-")
+	expectedFilename := emailPrefix + "feedback.txt"
 
-	var matches []string
+	var exactMatches []string
+
 	for _, file := range files {
 		if file.IsDir() {
 			continue
 		}
 
-		normalizedFilename := normalizeString(file.Name())
-
-		// Match if all the main name parts appear in the filename
-		// This handles cases like "Claudio Brasser 8.5" matching "claudio_brasser_feedback.txt"
-		matched := true
-		for _, part := range nameParts {
-			// Skip numeric parts (likely grades)
-			if _, err := fmt.Sscanf(part, "%f", new(float64)); err == nil {
-				continue
-			}
-
-			normalizedPart := normalizeString(part)
-			if normalizedPart == "" {
-				continue
-			}
-
-			if !strings.Contains(normalizedFilename, normalizedPart) {
-				matched = false
-				break
-			}
+		// Check if file is not empty (pop requires non-empty attachments)
+		fullPath := filepath.Join(directory, file.Name())
+		fileInfo, err := os.Stat(fullPath)
+		if err != nil {
+			continue // Skip files we can't stat
+		}
+		if fileInfo.Size() == 0 {
+			continue // Skip empty files
 		}
 
-		if matched && len(nameParts) > 0 {
-			fullPath := filepath.Join(directory, file.Name())
-
-			// Check if file is not empty (pop requires non-empty attachments)
-			fileInfo, err := os.Stat(fullPath)
-			if err != nil {
-				continue // Skip files we can't stat
-			}
-
-			if fileInfo.Size() == 0 {
-				continue // Skip empty files
-			}
-
-			matches = append(matches, fullPath)
+		// Exact match only
+		if strings.ToLower(file.Name()) == strings.ToLower(expectedFilename) {
+			exactMatches = append(exactMatches, fullPath)
 		}
 	}
 
-	return matches, nil
+	return exactMatches, nil
+}
+
+// sanitizeFilenameForEmail sanitizes student name for file matching
+// Must match the sanitization used when creating feedback files
+func sanitizeFilenameForEmail(s string) string {
+	s = strings.ToLower(s)
+	s = strings.ReplaceAll(s, " ", "")
+	s = strings.ReplaceAll(s, "/", "")
+	s = strings.ReplaceAll(s, "\\", "")
+	return s
 }
 
 // normalizeString removes spaces, dashes, underscores and converts to lowercase
@@ -143,8 +131,8 @@ func PrepareFeedbackEmails(
 		// Process template
 		body := ProcessTemplate(template, score.StudentName, test.Title, course.Name, score.Grade, customMessage)
 
-		// Find attachments
-		attachments, err := FindFeedbackFiles(feedbackDir, score.StudentName)
+		// Find attachments using email
+		attachments, err := FindFeedbackFiles(feedbackDir, studentEmail)
 		if err != nil {
 			return nil, fmt.Errorf("failed to find feedback files for %s: %w", score.StudentName, err)
 		}
@@ -177,6 +165,30 @@ func EmailSummary(emails []FeedbackEmail) string {
 			}
 		}
 		b.WriteString("\n")
+	}
+
+	return b.String()
+}
+
+// EmailPreview formats a single email for preview
+func EmailPreview(email FeedbackEmail, bccEmail string, isFirst bool) string {
+	var b strings.Builder
+
+	b.WriteString(fmt.Sprintf("To: %s <%s>\n", email.StudentName, email.StudentEmail))
+	if isFirst && bccEmail != "" {
+		b.WriteString(fmt.Sprintf("BCC: %s (first email only)\n", bccEmail))
+	}
+	b.WriteString(fmt.Sprintf("Subject: %s\n\n", email.Subject))
+	b.WriteString("---\n\n")
+	b.WriteString(email.Body)
+	b.WriteString("\n\n---\n\n")
+	b.WriteString(fmt.Sprintf("Attachments (%d):\n", len(email.Attachments)))
+	if len(email.Attachments) == 0 {
+		b.WriteString("  (none)\n")
+	} else {
+		for _, att := range email.Attachments {
+			b.WriteString(fmt.Sprintf("  - %s\n", filepath.Base(att)))
+		}
 	}
 
 	return b.String()

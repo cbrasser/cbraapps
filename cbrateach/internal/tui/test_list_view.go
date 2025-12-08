@@ -45,22 +45,20 @@ func (m Model) updateTestListView(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "d":
 		// Delete test
 		if len(m.tests) > 0 && m.cursor < len(m.tests) {
-			return m, func() tea.Msg {
-				test := m.tests[m.cursor]
-				confirmed, err := ShowConfirmation("Delete Test", fmt.Sprintf("Are you sure you want to delete '%s'?", test.Title), "Yes, delete", "Cancel")
-				if err != nil || !confirmed {
-					return nil
+			test := m.tests[m.cursor]
+			m.showingConfirmation = true
+			m.confirmationTitle = "Delete Test"
+			m.confirmationMessage = fmt.Sprintf("Are you sure you want to delete '%s'?", test.Title)
+			m.confirmationCallback = func(model Model) (Model, tea.Cmd) {
+				// Perform the deletion
+				if err := model.storage.DeleteTest(test.CourseID, test.ID); err != nil {
+					model.err = err
+					return model, nil
 				}
-
-				if err := m.storage.DeleteTest(test.CourseID, test.ID); err != nil {
-					ShowMessage("Error", fmt.Sprintf("Failed to delete test: %v", err))
-					return nil
-				}
-
-				// Force reload of tests by switching states
-				// We can return a Msg to reload
-				return m.loadTestsCmd(test.CourseID)
+				// Reload tests
+				return model, model.loadTestsCmd(test.CourseID)
 			}
+			return m, nil
 		}
 	}
 

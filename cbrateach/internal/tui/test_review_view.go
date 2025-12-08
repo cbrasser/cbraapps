@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 
 	"cbrateach/internal/email"
 	"cbrateach/internal/models"
@@ -142,6 +143,12 @@ func (m Model) updateTestReviewView(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Send feedback to students
 		if test.Status == "confirmed" {
 			return m, m.sendFeedbackEmails()
+		}
+
+	case "x":
+		// Export feedback files
+		if test.Status == "confirmed" {
+			return m, m.exportFeedbackFiles()
 		}
 	}
 
@@ -346,7 +353,7 @@ func (m Model) renderTestReviewView() string {
 	if test.Status == "review" {
 		help = append(help, "e: edit cell", "g: edit gifted points", "c: confirm test")
 	} else {
-		help = append(help, "u: unconfirm", "f: send feedback")
+		help = append(help, "u: unconfirm", "f: send feedback", "x: export feedback files")
 	}
 	help = append(help, "esc: back")
 
@@ -441,53 +448,100 @@ func (m Model) sendFeedbackEmails() tea.Cmd {
 
 		course := m.courses[m.selectedCourse]
 
-		// Show feedback form to get directory and custom message
-		formResult, err := ShowFeedbackForm()
+		// Automatically determine feedback directory using same structure as export
+		baseDir := m.cfg.FeedbackDir
+		if baseDir == "" {
+			baseDir = "./feedback_export"
+		}
+
+		// Use same path structure as export: {feedbackDir}/{Topic}/{CourseName}/feedback
+		topic := sanitizePathComponent(test.Topic)
+		courseName := sanitizePathComponent(test.CourseName)
+		feedbackPath := fmt.Sprintf("%s/%s/%s/feedback", baseDir, topic, courseName)
+
+		// Optional: Show form only for custom message
+		formResult, err := ShowCustomMessageForm()
 		if err != nil {
 			return nil
 		}
 
-		// Prepare emails
-		emails, err := email.PrepareFeedbackEmails(m.cfg, test, course, formResult.FeedbackDir, formResult.CustomMessage)
-		if err != nil {
-			ShowMessage("Error", fmt.Sprintf("Failed to prepare emails: %v", err))
-			return nil
-		}
+		customMessage := formResult.CustomMessage
 
-		if len(emails) == 0 {
-			ShowMessage("No Emails", "No students with email addresses found for this test.")
-			return nil
-		}
-
-		// Show summary and confirmation
-		summary := email.EmailSummary(emails)
-		confirmed, err := ShowConfirmation("Send Feedback Emails", summary, "Yes, send emails", "Cancel")
-		if err != nil || !confirmed {
-			return nil
-		}
-
-		// Send emails using pop for each student
-		successCount := 0
-		for _, e := range emails {
-			if err := m.sendFeedbackEmailWithPop(e); err != nil {
-				ShowMessage("Email Error", fmt.Sprintf("Failed to send email to %s: %v", e.StudentName, err))
-				continue
+		// Preview loop - allow user to preview, edit, and re-preview
+		for {
+			// Prepare emails with current custom message
+			emails, err := email.PrepareFeedbackEmails(m.cfg, test, course, feedbackPath, customMessage)
+			if err != nil {
+				ShowMessage("Error", fmt.Sprintf("Failed to prepare emails: %v", err))
+				return nil
 			}
-			successCount++
+
+			if len(emails) == 0 {
+				ShowMessage("No Emails", "No students with email addresses found for this test.")
+				return nil
+			}
+
+			// Show preview of first email
+			preview := email.EmailPreview(emails[0], m.cfg.BCCEmail, true)
+			previewResult, err := ShowEmailPreview(preview, customMessage, len(emails))
+			if err != nil {
+				return nil
+			}
+
+			switch previewResult.Action {
+			case EmailPreviewSend:
+				// User confirmed, proceed to send
+				// Show final summary
+				summary := email.EmailSummary(emails)
+				confirmed, err := ShowConfirmation("Send Feedback Emails", summary, "Yes, send emails", "Cancel")
+				if err != nil || !confirmed {
+					return nil
+				}
+
+				// Send emails using pop for each student
+				successCount := 0
+				for i, e := range emails {
+					// BCC on first email only
+					addBCC := (i == 0)
+					if err := m.sendFeedbackEmailWithPop(e, addBCC); err != nil {
+						ShowMessage("Email Error", fmt.Sprintf("Failed to send email to %s: %v", e.StudentName, err))
+						continue
+					}
+					successCount++
+
+					// Rate limiting: wait 1.1 seconds after every 2 emails
+					if (i+1) % 2 == 0 && i < len(emails)-1 {
+						time.Sleep(1100 * time.Millisecond)
+					}
+				}
+
+				ShowMessage("Emails Sent", fmt.Sprintf("Successfully sent %d out of %d emails.", successCount, len(emails)))
+				return nil
+
+			case EmailPreviewEdit:
+				// User wants to edit, update custom message and loop again
+				customMessage = previewResult.CustomMessage
+				continue
+
+			case EmailPreviewCancel:
+				// User cancelled
+				return nil
+			}
 		}
-
-		ShowMessage("Emails Sent", fmt.Sprintf("Successfully sent %d out of %d emails.", successCount, len(emails)))
-
-		return nil
 	})
 }
 
-func (m Model) sendFeedbackEmailWithPop(e email.FeedbackEmail) error {
+func (m Model) sendFeedbackEmailWithPop(e email.FeedbackEmail, addBCC bool) error {
 	// Build pop arguments
 	args := []string{}
 
 	// Add recipient
 	args = append(args, "--to", e.StudentEmail)
+
+	// Add BCC if configured and requested (first email only)
+	if addBCC && m.cfg.BCCEmail != "" {
+		args = append(args, "--bcc", m.cfg.BCCEmail)
+	}
 
 	// Add subject
 	args = append(args, "--subject", e.Subject)
@@ -515,4 +569,51 @@ func (m Model) sendFeedbackEmailWithPop(e email.FeedbackEmail) error {
 	}
 
 	return nil
+}
+
+func (m Model) exportFeedbackFiles() tea.Cmd {
+	return tea.Cmd(func() tea.Msg {
+		if m.selectedTest >= len(m.tests) {
+			return nil
+		}
+
+		test := &m.tests[m.selectedTest]
+
+		if m.selectedCourse >= len(m.courses) {
+			ShowMessage("Error", "Course not found")
+			return nil
+		}
+
+		course := m.courses[m.selectedCourse]
+
+		// Use feedback directory from config with default fallback
+		baseDir := m.cfg.FeedbackDir
+		if baseDir == "" {
+			baseDir = "./feedback_export"
+		}
+
+		// Create directory structure: {feedbackDir}/{Topic}/{CourseName}/feedback
+		// Use sanitizePathComponent to properly clean path parts
+		topic := sanitizePathComponent(test.Topic)
+		courseName := sanitizePathComponent(test.CourseName)
+		feedbackPath := fmt.Sprintf("%s/%s/%s/feedback", baseDir, topic, courseName)
+
+		// Export feedback files (template is now embedded in the code)
+		err := m.storage.ExportFeedbackFiles(test, course, feedbackPath)
+		if err != nil {
+			ShowMessage("Export Error", fmt.Sprintf("Failed to export feedback files: %v", err))
+			return nil
+		}
+
+		ShowMessage("Export Successful", fmt.Sprintf("Feedback files exported to:\n%s", feedbackPath))
+		return nil
+	})
+}
+
+// sanitizePathComponent sanitizes a string for use in file paths
+func sanitizePathComponent(s string) string {
+	s = strings.ReplaceAll(s, " ", "_")
+	s = strings.ReplaceAll(s, "/", "_")
+	s = strings.ReplaceAll(s, "\\", "_")
+	return s
 }

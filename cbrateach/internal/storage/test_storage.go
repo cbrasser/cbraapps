@@ -273,3 +273,109 @@ func (s *Storage) DeleteTest(courseID, testID string) error {
 
 	return s.SaveTests(courseID, newTests)
 }
+
+// Default feedback template embedded in binary
+const defaultFeedbackTemplate = `Klasse:
+Name:
+Maximale Punkte:
+Erreichte Punkte:
+Note:
+
+Feedback:
+A1:
+A2:
+A3:
+A4:
+A5:
+A6:
+A7:
+A8:
+A9:
+A10:
+A11:
+`
+
+// ExportFeedbackFiles generates feedback.txt files for each student based on template
+func (s *Storage) ExportFeedbackFiles(test *models.Test, course models.Course, outputDir string) error {
+	// Use embedded template
+	template := defaultFeedbackTemplate
+
+	// Create output directory if it doesn't exist
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	// Calculate max points
+	var maxPoints float64
+	for _, q := range test.Questions {
+		maxPoints += q.MaxPoints
+	}
+	maxPoints += test.GiftedPoints
+
+	// Generate a file for each student
+	for _, studentScore := range test.StudentScores {
+		// Find student email from course
+		var studentEmail string
+		normalizedScoreName := normalizeString(studentScore.StudentName)
+		for _, student := range course.Students {
+			normalizedStudentName := normalizeString(student.Name)
+			if strings.Contains(normalizedScoreName, normalizedStudentName) ||
+				strings.Contains(normalizedStudentName, normalizedScoreName) {
+				studentEmail = student.Email
+				break
+			}
+		}
+
+		// Skip if no email found - can't create proper filename
+		if studentEmail == "" {
+			continue
+		}
+		// Build feedback content
+		content := template
+		content = strings.Replace(content, "Klasse:", fmt.Sprintf("Klasse: %s", test.CourseName), 1)
+		content = strings.Replace(content, "Name:", fmt.Sprintf("Name: %s", studentScore.StudentName), 1)
+		content = strings.Replace(content, "Maximale Punkte:", fmt.Sprintf("Maximale Punkte: %.1f", maxPoints), 1)
+		content = strings.Replace(content, "Erreichte Punkte:", fmt.Sprintf("Erreichte Punkte: %.1f", studentScore.TotalPoints), 1)
+		content = strings.Replace(content, "Note:", fmt.Sprintf("Note: %.1f", studentScore.Grade), 1)
+
+		// Replace task feedback (A1, A2, etc.)
+		for i, question := range test.Questions {
+			taskNum := i + 1
+			taskKey := fmt.Sprintf("A%d:", taskNum)
+
+			points := studentScore.QuestionScores[question.ID]
+			comment := studentScore.QuestionComments[question.ID]
+
+			// New multi-line format
+			feedbackBlock := fmt.Sprintf("## A%d\nPunkte: %.1f/%.1f", taskNum, points, question.MaxPoints)
+			if comment != "" {
+				feedbackBlock += fmt.Sprintf("\nFeedback: %s", comment)
+			} else {
+				feedbackBlock += "\nFeedback:"
+			}
+
+			content = strings.Replace(content, taskKey, feedbackBlock, 1)
+		}
+
+		// Generate filename from email: get part before @, replace dots with dashes
+		emailPrefix := strings.Split(studentEmail, "@")[0]
+		emailPrefix = strings.ReplaceAll(emailPrefix, ".", "-")
+		filename := fmt.Sprintf("%sfeedback.txt", emailPrefix)
+		filepath := filepath.Join(outputDir, filename)
+
+		if err := os.WriteFile(filepath, []byte(content), 0644); err != nil {
+			return fmt.Errorf("failed to write feedback file for %s: %w", studentScore.StudentName, err)
+		}
+	}
+
+	return nil
+}
+
+// normalizeString removes spaces, dashes, underscores and converts to lowercase for matching
+func normalizeString(s string) string {
+	s = strings.ToLower(s)
+	s = strings.ReplaceAll(s, " ", "")
+	s = strings.ReplaceAll(s, "-", "")
+	s = strings.ReplaceAll(s, "_", "")
+	return s
+}
