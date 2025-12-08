@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"cbrateach/internal/config"
 	"cbrateach/internal/storage"
@@ -139,8 +140,14 @@ func handleAddTest(cfg config.Config) {
 	}
 
 	// Import test
-	if err := store.ImportTestFromCSV(*points, courseID, courseName, *name, *topic, *weight); err != nil {
-		log.Fatalf("Failed to import test: %v", err)
+	if strings.HasSuffix(strings.ToLower(*points), ".json") {
+		if err := store.ImportTestFromJSON(*points, courseID, courseName, *name, *topic, *weight); err != nil {
+			log.Fatalf("Failed to import test from JSON: %v", err)
+		}
+	} else {
+		if err := store.ImportTestFromCSV(*points, courseID, courseName, *name, *topic, *weight); err != nil {
+			log.Fatalf("Failed to import test from CSV: %v", err)
+		}
 	}
 }
 

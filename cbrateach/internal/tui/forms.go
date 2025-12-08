@@ -242,7 +242,7 @@ func ShowMessage(title, message string) error {
 }
 
 type FeedbackFormResult struct {
-	FeedbackDir string
+	FeedbackDir   string
 	CustomMessage string
 }
 
@@ -285,8 +285,16 @@ func ShowFeedbackForm() (*FeedbackFormResult, error) {
 	return result, nil
 }
 
-func ShowConfirmation(title, message string) (bool, error) {
+func ShowConfirmation(title, message, confirmLabel, cancelLabel string) (bool, error) {
 	var confirmed bool
+
+	// Default labels if empty
+	if confirmLabel == "" {
+		confirmLabel = "Yes"
+	}
+	if cancelLabel == "" {
+		cancelLabel = "No"
+	}
 
 	form := huh.NewForm(
 		huh.NewGroup(
@@ -294,9 +302,9 @@ func ShowConfirmation(title, message string) (bool, error) {
 				Title(title).
 				Description(message),
 			huh.NewConfirm().
-				Title("Proceed with sending emails?").
-				Affirmative("Yes, send emails").
-				Negative("Cancel").
+				Title("").
+				Affirmative(confirmLabel).
+				Negative(cancelLabel).
 				Value(&confirmed),
 		),
 	)

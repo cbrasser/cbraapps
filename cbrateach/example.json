@@ -1,0 +1,1523 @@
+{
+  "exam_name": "Textverarbeitung 28Fa",
+  "parts": {
+    "part_1": {
+      "part_name": "Word Formatting - 28Fa",
+      "tasks": [
+        "task_1",
+        "task_4",
+        "task_5",
+        "task_6",
+        "task_9",
+        "task_10",
+        "task_11",
+        "task_2",
+        "task_3",
+        "task_7",
+        "task_8"
+      ]
+    }
+  },
+  "students": {
+    "29gc_budliger_lea_probe": {
+      "Key": "29gc_budliger_lea_probe",
+      "name": "Budliger Lea Probe",
+      "surname": "29Gc",
+      "results": {
+        "part_1": {
+          "task_1": {
+            "points_reached": 1,
+            "points_earnable": 1,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_10": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_11": {
+            "points_reached": 0.25,
+            "points_earnable": 1,
+            "comments": "Nur Überschrift gefunden, keine Liste",
+            "reviewed": true
+          },
+          "task_2": {
+            "points_reached": 1.5,
+            "points_earnable": 2,
+            "comments": "Fett/Kursiv-Formatierung in normalen Absätzen vorhanden",
+            "reviewed": true
+          },
+          "task_3": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_4": {
+            "points_reached": 2.5,
+            "points_earnable": 3,
+            "comments": "Standard-Formatvorlage: Zeilenabstand nicht 1,5",
+            "reviewed": true
+          },
+          "task_5": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_6": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_7": {
+            "points_reached": 3,
+            "points_earnable": 3,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_8": {
+            "points_reached": 1,
+            "points_earnable": 3,
+            "comments": "Quelle 1 (Website): Nicht gefunden; Quelle 3 (Document from Website): Nicht gefunden",
+            "reviewed": true
+          },
+          "task_9": {
+            "points_reached": 0,
+            "points_earnable": 1,
+            "comments": "Zitier-Markierungen [ZITAT 1/2/3] noch vorhanden",
+            "reviewed": true
+          }
+        }
+      }
+    },
+    "29gc_buri_martin_probe": {
+      "Key": "29gc_buri_martin_probe",
+      "name": "Buri Martin Probe",
+      "surname": "29Gc",
+      "results": {
+        "part_1": {
+          "task_1": {
+            "points_reached": 1,
+            "points_earnable": 1,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_10": {
+            "points_reached": 0,
+            "points_earnable": 2,
+            "comments": "Literaturverzeichnis nicht gefunden",
+            "reviewed": true
+          },
+          "task_11": {
+            "points_reached": 0,
+            "points_earnable": 1,
+            "comments": "Abbildungsverzeichnis nicht gefunden",
+            "reviewed": true
+          },
+          "task_2": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_3": {
+            "points_reached": 0,
+            "points_earnable": 2,
+            "comments": "KAPITEL-Markierungen noch vorhanden; UNTERKAPITEL-Markierungen noch vorhanden; Formatvorlagen nicht korrekt angewendet (Gefunden: H1: False, H2: False)",
+            "reviewed": true
+          },
+          "task_4": {
+            "points_reached": 0,
+            "points_earnable": 3,
+            "comments": "Überschrift 1 Formatvorlage nicht gefunden; Überschrift 2 Formatvorlage nicht gefunden; Standard-Formatvorlage: Zeilenabstand nicht 1,5; Standard-Formatvorlage: Schriftgrösse nicht 11 pt",
+            "reviewed": true
+          },
+          "task_5": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_6": {
+            "points_reached": 0,
+            "points_earnable": 2,
+            "comments": "Inhaltsverzeichnis nicht gefunden",
+            "reviewed": true
+          },
+          "task_7": {
+            "points_reached": 2,
+            "points_earnable": 3,
+            "comments": "Bildbeschriftung nicht gefunden",
+            "reviewed": true
+          },
+          "task_8": {
+            "points_reached": 2,
+            "points_earnable": 3,
+            "comments": "Quelle 1 (Website): Fehlt Title, YearAccessed; Quelle 3 (Document from Website): Fehlt Type, Author, YearAccessed",
+            "reviewed": true
+          },
+          "task_9": {
+            "points_reached": 0,
+            "points_earnable": 1,
+            "comments": "Zitier-Markierungen [ZITAT 1/2/3] noch vorhanden",
+            "reviewed": true
+          }
+        }
+      }
+    },
+    "29gc_gäumann_lasse_probe": {
+      "Key": "29gc_gäumann_lasse_probe",
+      "name": "Gäumann Lasse Probe",
+      "surname": "29Gc",
+      "results": {
+        "part_1": {
+          "task_1": {
+            "points_reached": 0,
+            "points_earnable": 1,
+            "comments": "Titelblatt nicht korrekt erstellt oder Markierungen nicht entfernt",
+            "reviewed": true
+          },
+          "task_10": {
+            "points_reached": 0,
+            "points_earnable": 2,
+            "comments": "Literaturverzeichnis nicht gefunden",
+            "reviewed": true
+          },
+          "task_11": {
+            "points_reached": 0,
+            "points_earnable": 1,
+            "comments": "Abbildungsverzeichnis nicht gefunden",
+            "reviewed": true
+          },
+          "task_2": {
+            "points_reached": 0,
+            "points_earnable": 2,
+            "comments": "Markierungen noch im Text vorhanden; Markierungen noch im Text vorhanden; Unterstreichungen noch im Text vorhanden; Fett/Kursiv-Formatierung in normalen Absätzen vorhanden; Formatierung nicht korrekt entfernt",
+            "reviewed": true
+          },
+          "task_3": {
+            "points_reached": 0,
+            "points_earnable": 2,
+            "comments": "KAPITEL-Markierungen noch vorhanden; UNTERKAPITEL-Markierungen noch vorhanden; Formatvorlagen nicht korrekt angewendet (Gefunden: H1: False, H2: False)",
+            "reviewed": true
+          },
+          "task_4": {
+            "points_reached": 0,
+            "points_earnable": 3,
+            "comments": "Überschrift 1 Formatvorlage nicht gefunden; Überschrift 2 Formatvorlage nicht gefunden; Standard-Formatvorlage: Zeilenabstand nicht 1,5; Standard-Formatvorlage: Schriftgrösse nicht 11 pt",
+            "reviewed": true
+          },
+          "task_5": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_6": {
+            "points_reached": 0,
+            "points_earnable": 2,
+            "comments": "Inhaltsverzeichnis nicht gefunden",
+            "reviewed": true
+          },
+          "task_7": {
+            "points_reached": 1,
+            "points_earnable": 3,
+            "comments": "BILD HIER-Markierung noch vorhanden; Bildbeschriftung nicht gefunden",
+            "reviewed": true
+          },
+          "task_8": {
+            "points_reached": 0,
+            "points_earnable": 3,
+            "comments": "Keine Quellen im Quellen-Manager gefunden",
+            "reviewed": true
+          },
+          "task_9": {
+            "points_reached": 0,
+            "points_earnable": 1,
+            "comments": "Zitier-Markierungen [ZITAT 1/2/3] noch vorhanden",
+            "reviewed": true
+          }
+        }
+      }
+    },
+    "29gc_götz_denis_probe": {
+      "Key": "29gc_götz_denis_probe",
+      "name": "Götz Denis Probe",
+      "surname": "29Gc",
+      "results": {
+        "part_1": {
+          "task_1": {
+            "points_reached": 1,
+            "points_earnable": 1,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_10": {
+            "points_reached": 0,
+            "points_earnable": 2,
+            "comments": "Literaturverzeichnis nicht gefunden",
+            "reviewed": true
+          },
+          "task_11": {
+            "points_reached": 0,
+            "points_earnable": 1,
+            "comments": "Abbildungsverzeichnis nicht gefunden",
+            "reviewed": true
+          },
+          "task_2": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_3": {
+            "points_reached": 1,
+            "points_earnable": 2,
+            "comments": "Formatvorlagen nicht korrekt angewendet (Gefunden: H1: True, H2: False)",
+            "reviewed": true
+          },
+          "task_4": {
+            "points_reached": 2,
+            "points_earnable": 3,
+            "comments": "Überschrift 2 Formatvorlage nicht gefunden",
+            "reviewed": true
+          },
+          "task_5": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_6": {
+            "points_reached": 1.5,
+            "points_earnable": 2,
+            "comments": "Kein Seitenumbruch nach Inhaltsverzeichnis",
+            "reviewed": true
+          },
+          "task_7": {
+            "points_reached": 2,
+            "points_earnable": 3,
+            "comments": "Bildbeschriftung nicht gefunden",
+            "reviewed": true
+          },
+          "task_8": {
+            "points_reached": 0,
+            "points_earnable": 3,
+            "comments": "Keine Quellen im Quellen-Manager gefunden",
+            "reviewed": true
+          },
+          "task_9": {
+            "points_reached": 0,
+            "points_earnable": 1,
+            "comments": "Zitier-Markierungen [ZITAT 1/2/3] noch vorhanden",
+            "reviewed": true
+          }
+        }
+      }
+    },
+    "29gc_herger_meilin_probe": {
+      "Key": "29gc_herger_meilin_probe",
+      "name": "Herger Meilin Probe",
+      "surname": "29Gc",
+      "results": {
+        "part_1": {
+          "task_1": {
+            "points_reached": 1,
+            "points_earnable": 1,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_10": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_11": {
+            "points_reached": 0.5,
+            "points_earnable": 1,
+            "comments": "Kein Seitenumbruch nach Abbildungsverzeichnis",
+            "reviewed": true
+          },
+          "task_2": {
+            "points_reached": 0,
+            "points_earnable": 2,
+            "comments": "Unterstreichungen noch im Text vorhanden; Fett/Kursiv-Formatierung in normalen Absätzen vorhanden; Formatierung nicht korrekt entfernt",
+            "reviewed": true
+          },
+          "task_3": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_4": {
+            "points_reached": 2.2,
+            "points_earnable": 3,
+            "comments": "Überschrift 2: Nicht fett; Standard-Formatvorlage: Zeilenabstand nicht 1,5",
+            "reviewed": true
+          },
+          "task_5": {
+            "points_reached": 1,
+            "points_earnable": 2,
+            "comments": "Fusszeile mit Seitenzahl nicht gefunden",
+            "reviewed": true
+          },
+          "task_6": {
+            "points_reached": 1.5,
+            "points_earnable": 2,
+            "comments": "Kein Seitenumbruch nach Inhaltsverzeichnis",
+            "reviewed": true
+          },
+          "task_7": {
+            "points_reached": 3,
+            "points_earnable": 3,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_8": {
+            "points_reached": 2.5,
+            "points_earnable": 3,
+            "comments": "Quelle 1 (Website): Fehlt YearAccessed; Quelle 3 (Document from Website): Fehlt Type, YearAccessed",
+            "reviewed": true
+          },
+          "task_9": {
+            "points_reached": 1,
+            "points_earnable": 1,
+            "comments": "",
+            "reviewed": true
+          }
+        }
+      }
+    },
+    "29gc_liechti_hannah_probe": {
+      "Key": "29gc_liechti_hannah_probe",
+      "name": "Liechti Hannah Probe",
+      "surname": "29Gc",
+      "results": {
+        "part_1": {
+          "task_1": {
+            "points_reached": 1,
+            "points_earnable": 1,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_10": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_11": {
+            "points_reached": 0.5,
+            "points_earnable": 1,
+            "comments": "Kein Seitenumbruch nach Abbildungsverzeichnis",
+            "reviewed": true
+          },
+          "task_2": {
+            "points_reached": 1.5,
+            "points_earnable": 2,
+            "comments": "Fett/Kursiv-Formatierung in normalen Absätzen vorhanden",
+            "reviewed": true
+          },
+          "task_3": {
+            "points_reached": 1,
+            "points_earnable": 2,
+            "comments": "Formatvorlagen nicht korrekt angewendet (Gefunden: H1: False, H2: False)",
+            "reviewed": true
+          },
+          "task_4": {
+            "points_reached": 0,
+            "points_earnable": 3,
+            "comments": "Überschrift 1 Formatvorlage nicht gefunden; Überschrift 2 Formatvorlage nicht gefunden; Standard-Formatvorlage: Zeilenabstand nicht 1,5; Standard-Formatvorlage: Schriftgrösse nicht 11 pt",
+            "reviewed": true
+          },
+          "task_5": {
+            "points_reached": 1,
+            "points_earnable": 2,
+            "comments": "Fusszeile mit Seitenzahl nicht gefunden",
+            "reviewed": true
+          },
+          "task_6": {
+            "points_reached": 1.5,
+            "points_earnable": 2,
+            "comments": "Kein Seitenumbruch nach Inhaltsverzeichnis",
+            "reviewed": true
+          },
+          "task_7": {
+            "points_reached": 3,
+            "points_earnable": 3,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_8": {
+            "points_reached": 2.5,
+            "points_earnable": 3,
+            "comments": "Quelle 1 (Website): Fehlt YearAccessed; Quelle 3 (Document from Website): Fehlt Type, YearAccessed",
+            "reviewed": true
+          },
+          "task_9": {
+            "points_reached": 0,
+            "points_earnable": 1,
+            "comments": "Zitier-Markierungen entfernt, aber keine Zitate gefunden",
+            "reviewed": true
+          }
+        }
+      }
+    },
+    "29gc_lüthy_lucy_probe": {
+      "Key": "29gc_lüthy_lucy_probe",
+      "name": "Lüthy Lucy Probe",
+      "surname": "29Gc",
+      "results": {
+        "part_1": {
+          "task_1": {
+            "points_reached": 1,
+            "points_earnable": 1,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_10": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_11": {
+            "points_reached": 0,
+            "points_earnable": 1,
+            "comments": "Abbildungsverzeichnis nicht gefunden",
+            "reviewed": true
+          },
+          "task_2": {
+            "points_reached": 1.5,
+            "points_earnable": 2,
+            "comments": "Fett/Kursiv-Formatierung in normalen Absätzen vorhanden",
+            "reviewed": true
+          },
+          "task_3": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_4": {
+            "points_reached": 1.8,
+            "points_earnable": 3,
+            "comments": "Überschrift 2: Schriftart nicht Arial; Überschrift 2: Schriftgrösse nicht 14 pt; Überschrift 2: Nicht fett; Standard-Formatvorlage: Zeilenabstand nicht 1,5",
+            "reviewed": true
+          },
+          "task_5": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_6": {
+            "points_reached": 1.5,
+            "points_earnable": 2,
+            "comments": "Kein Seitenumbruch nach Inhaltsverzeichnis",
+            "reviewed": true
+          },
+          "task_7": {
+            "points_reached": 3,
+            "points_earnable": 3,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_8": {
+            "points_reached": 3,
+            "points_earnable": 3,
+            "comments": "Quelle 1 (Website): Fehlt YearAccessed; Quelle 3 (Document from Website): Fehlt YearAccessed",
+            "reviewed": true
+          },
+          "task_9": {
+            "points_reached": 0,
+            "points_earnable": 1,
+            "comments": "Zitier-Markierungen entfernt, aber keine Zitate gefunden",
+            "reviewed": true
+          }
+        }
+      }
+    },
+    "29gc_mekonnen_haimanot_probe": {
+      "Key": "29gc_mekonnen_haimanot_probe",
+      "name": "Mekonnen Haimanot Probe",
+      "surname": "29Gc",
+      "results": {
+        "part_1": {
+          "task_1": {
+            "points_reached": 1,
+            "points_earnable": 1,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_10": {
+            "points_reached": 0,
+            "points_earnable": 2,
+            "comments": "Literaturverzeichnis nicht gefunden",
+            "reviewed": true
+          },
+          "task_11": {
+            "points_reached": 0,
+            "points_earnable": 1,
+            "comments": "Abbildungsverzeichnis nicht gefunden",
+            "reviewed": true
+          },
+          "task_2": {
+            "points_reached": 1.5,
+            "points_earnable": 2,
+            "comments": "Fett/Kursiv-Formatierung in normalen Absätzen vorhanden",
+            "reviewed": true
+          },
+          "task_3": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_4": {
+            "points_reached": 1.2,
+            "points_earnable": 3,
+            "comments": "Überschrift 1: Schriftart nicht Arial; Überschrift 1: Schriftgrösse nicht 16 pt; Überschrift 1: Nicht fett; Überschrift 2: Schriftart nicht Arial; Überschrift 2: Schriftgrösse nicht 14 pt; Standard-Formatvorlage: Zeilenabstand nicht 1,5",
+            "reviewed": true
+          },
+          "task_5": {
+            "points_reached": 1,
+            "points_earnable": 2,
+            "comments": "Fusszeile mit Seitenzahl nicht gefunden",
+            "reviewed": true
+          },
+          "task_6": {
+            "points_reached": 1.5,
+            "points_earnable": 2,
+            "comments": "Kein Seitenumbruch nach Inhaltsverzeichnis",
+            "reviewed": true
+          },
+          "task_7": {
+            "points_reached": 3,
+            "points_earnable": 3,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_8": {
+            "points_reached": 2,
+            "points_earnable": 3,
+            "comments": "Quelle 1 (Website): Fehlt Title, YearAccessed; Quelle 3 (Document from Website): Fehlt Author, YearAccessed",
+            "reviewed": true
+          },
+          "task_9": {
+            "points_reached": 0,
+            "points_earnable": 1,
+            "comments": "Zitier-Markierungen entfernt, aber keine Zitate gefunden",
+            "reviewed": true
+          }
+        }
+      }
+    },
+    "29gc_mia_klaesi_probe": {
+      "Key": "29gc_mia_klaesi_probe",
+      "name": "Mia Klaesi Probe",
+      "surname": "29Gc",
+      "results": {
+        "part_1": {
+          "task_1": {
+            "points_reached": 1,
+            "points_earnable": 1,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_10": {
+            "points_reached": 1.5,
+            "points_earnable": 2,
+            "comments": "Literaturverzeichnis-Überschrift ist nicht Überschrift 1",
+            "reviewed": true
+          },
+          "task_11": {
+            "points_reached": 0,
+            "points_earnable": 1,
+            "comments": "Abbildungsverzeichnis nicht gefunden",
+            "reviewed": true
+          },
+          "task_2": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_3": {
+            "points_reached": 1,
+            "points_earnable": 2,
+            "comments": "Formatvorlagen nicht korrekt angewendet (Gefunden: H1: False, H2: True)",
+            "reviewed": true
+          },
+          "task_4": {
+            "points_reached": 0.2,
+            "points_earnable": 3,
+            "comments": "Überschrift 1 Formatvorlage nicht gefunden; Überschrift 2: Schriftart nicht Arial; Überschrift 2: Schriftgrösse nicht 14 pt; Überschrift 2: Nicht fett; Standard-Formatvorlage: Zeilenabstand nicht 1,5; Standard-Formatvorlage: Schriftgrösse nicht 11 pt",
+            "reviewed": true
+          },
+          "task_5": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_6": {
+            "points_reached": 0,
+            "points_earnable": 2,
+            "comments": "Inhaltsverzeichnis nicht gefunden",
+            "reviewed": true
+          },
+          "task_7": {
+            "points_reached": 2,
+            "points_earnable": 3,
+            "comments": "Bildbeschriftung nicht gefunden",
+            "reviewed": true
+          },
+          "task_8": {
+            "points_reached": 1.5,
+            "points_earnable": 3,
+            "comments": "Quelle 1 (Website): Fehlt Title; Quelle 2 (Book): Nicht gefunden; Quelle 3 (Document from Website): Fehlt Type, Title",
+            "reviewed": true
+          },
+          "task_9": {
+            "points_reached": 0,
+            "points_earnable": 1,
+            "comments": "Zitier-Markierungen [ZITAT 1/2/3] noch vorhanden",
+            "reviewed": true
+          }
+        }
+      }
+    },
+    "29gc_onofaro_chiara_probe": {
+      "Key": "29gc_onofaro_chiara_probe",
+      "name": "Onofaro Chiara Probe",
+      "surname": "29Gc",
+      "results": {
+        "part_1": {
+          "task_1": {
+            "points_reached": 1,
+            "points_earnable": 1,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_10": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_11": {
+            "points_reached": 0.25,
+            "points_earnable": 1,
+            "comments": "Nur Überschrift gefunden, keine Liste",
+            "reviewed": true
+          },
+          "task_2": {
+            "points_reached": 1.5,
+            "points_earnable": 2,
+            "comments": "Fett/Kursiv-Formatierung in normalen Absätzen vorhanden",
+            "reviewed": true
+          },
+          "task_3": {
+            "points_reached": 1,
+            "points_earnable": 2,
+            "comments": "Formatvorlagen nicht korrekt angewendet (Gefunden: H1: True, H2: False)",
+            "reviewed": true
+          },
+          "task_4": {
+            "points_reached": 0.2,
+            "points_earnable": 3,
+            "comments": "Überschrift 1: Schriftart nicht Arial; Überschrift 1: Schriftgrösse nicht 16 pt; Überschrift 1: Nicht fett; Überschrift 2 Formatvorlage nicht gefunden; Standard-Formatvorlage: Zeilenabstand nicht 1,5; Standard-Formatvorlage: Schriftgrösse nicht 11 pt",
+            "reviewed": true
+          },
+          "task_5": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_6": {
+            "points_reached": 1.5,
+            "points_earnable": 2,
+            "comments": "Kein Seitenumbruch nach Inhaltsverzeichnis",
+            "reviewed": true
+          },
+          "task_7": {
+            "points_reached": 2,
+            "points_earnable": 3,
+            "comments": "Bildbeschriftung nicht gefunden",
+            "reviewed": true
+          },
+          "task_8": {
+            "points_reached": 2.5,
+            "points_earnable": 3,
+            "comments": "Quelle 1 (Website): Fehlt YearAccessed; Quelle 3 (Document from Website): Fehlt Author, YearAccessed",
+            "reviewed": true
+          },
+          "task_9": {
+            "points_reached": 0,
+            "points_earnable": 1,
+            "comments": "Zitier-Markierungen entfernt, aber keine Zitate gefunden",
+            "reviewed": true
+          }
+        }
+      }
+    },
+    "29gc_portomeñe_fernandes_alejandro_probe": {
+      "Key": "29gc_portomeñe_fernandes_alejandro_probe",
+      "name": "Portomeñe Fernandes Alejandro Probe",
+      "surname": "29Gc",
+      "results": {
+        "part_1": {
+          "task_1": {
+            "points_reached": 1,
+            "points_earnable": 1,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_10": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_11": {
+            "points_reached": 0.5,
+            "points_earnable": 1,
+            "comments": "Kein Seitenumbruch nach Abbildungsverzeichnis",
+            "reviewed": true
+          },
+          "task_2": {
+            "points_reached": 1.5,
+            "points_earnable": 2,
+            "comments": "Fett/Kursiv-Formatierung in normalen Absätzen vorhanden",
+            "reviewed": true
+          },
+          "task_3": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_4": {
+            "points_reached": 3,
+            "points_earnable": 3,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_5": {
+            "points_reached": 1,
+            "points_earnable": 2,
+            "comments": "Fusszeile mit Seitenzahl nicht gefunden",
+            "reviewed": true
+          },
+          "task_6": {
+            "points_reached": 1.5,
+            "points_earnable": 2,
+            "comments": "Kein Seitenumbruch nach Inhaltsverzeichnis",
+            "reviewed": true
+          },
+          "task_7": {
+            "points_reached": 3,
+            "points_earnable": 3,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_8": {
+            "points_reached": 2.5,
+            "points_earnable": 3,
+            "comments": "Quelle 1 (Website): Fehlt Author; Quelle 3 (Document from Website): Fehlt Type, Title",
+            "reviewed": true
+          },
+          "task_9": {
+            "points_reached": 1,
+            "points_earnable": 1,
+            "comments": "",
+            "reviewed": true
+          }
+        }
+      }
+    },
+    "29gc_prabakaran_naneethaa_probe": {
+      "Key": "29gc_prabakaran_naneethaa_probe",
+      "name": "Prabakaran Naneethaa Probe",
+      "surname": "29Gc",
+      "results": {
+        "part_1": {
+          "task_1": {
+            "points_reached": 1,
+            "points_earnable": 1,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_10": {
+            "points_reached": 0,
+            "points_earnable": 2,
+            "comments": "Literaturverzeichnis nicht gefunden",
+            "reviewed": true
+          },
+          "task_11": {
+            "points_reached": 0,
+            "points_earnable": 1,
+            "comments": "Abbildungsverzeichnis nicht gefunden",
+            "reviewed": true
+          },
+          "task_2": {
+            "points_reached": 1.5,
+            "points_earnable": 2,
+            "comments": "Fett/Kursiv-Formatierung in normalen Absätzen vorhanden",
+            "reviewed": true
+          },
+          "task_3": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_4": {
+            "points_reached": 2.5,
+            "points_earnable": 3,
+            "comments": "Überschrift 1: Schriftart nicht Arial; Überschrift 2: Schriftart nicht Arial",
+            "reviewed": true
+          },
+          "task_5": {
+            "points_reached": 1,
+            "points_earnable": 2,
+            "comments": "Fusszeile mit Seitenzahl nicht gefunden",
+            "reviewed": true
+          },
+          "task_6": {
+            "points_reached": 1.5,
+            "points_earnable": 2,
+            "comments": "Kein Seitenumbruch nach Inhaltsverzeichnis",
+            "reviewed": true
+          },
+          "task_7": {
+            "points_reached": 2,
+            "points_earnable": 3,
+            "comments": "Bildbeschriftung nicht gefunden",
+            "reviewed": true
+          },
+          "task_8": {
+            "points_reached": 3,
+            "points_earnable": 3,
+            "comments": "Quelle 1 (Website): Fehlt YearAccessed; Quelle 3 (Document from Website): Fehlt YearAccessed",
+            "reviewed": true
+          },
+          "task_9": {
+            "points_reached": 1,
+            "points_earnable": 1,
+            "comments": "",
+            "reviewed": true
+          }
+        }
+      }
+    },
+    "29gc_rusillon_léonie_probe": {
+      "Key": "29gc_rusillon_léonie_probe",
+      "name": "Rusillon Léonie Probe",
+      "surname": "29Gc",
+      "results": {
+        "part_1": {
+          "task_1": {
+            "points_reached": 1,
+            "points_earnable": 1,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_10": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_11": {
+            "points_reached": 0,
+            "points_earnable": 1,
+            "comments": "Abbildungsverzeichnis nicht gefunden",
+            "reviewed": true
+          },
+          "task_2": {
+            "points_reached": 1.5,
+            "points_earnable": 2,
+            "comments": "Fett/Kursiv-Formatierung in normalen Absätzen vorhanden",
+            "reviewed": true
+          },
+          "task_3": {
+            "points_reached": 1,
+            "points_earnable": 2,
+            "comments": "Formatvorlagen nicht korrekt angewendet (Gefunden: H1: True, H2: False)",
+            "reviewed": true
+          },
+          "task_4": {
+            "points_reached": 0.2,
+            "points_earnable": 3,
+            "comments": "Überschrift 1: Schriftart nicht Arial; Überschrift 1: Schriftgrösse nicht 16 pt; Überschrift 1: Nicht fett; Überschrift 2 Formatvorlage nicht gefunden; Standard-Formatvorlage: Zeilenabstand nicht 1,5; Standard-Formatvorlage: Schriftgrösse nicht 11 pt",
+            "reviewed": true
+          },
+          "task_5": {
+            "points_reached": 1,
+            "points_earnable": 2,
+            "comments": "Kopfzeile nicht gefunden",
+            "reviewed": true
+          },
+          "task_6": {
+            "points_reached": 1.5,
+            "points_earnable": 2,
+            "comments": "Kein Seitenumbruch nach Inhaltsverzeichnis",
+            "reviewed": true
+          },
+          "task_7": {
+            "points_reached": 2,
+            "points_earnable": 3,
+            "comments": "Bildbeschriftung nicht gefunden",
+            "reviewed": true
+          },
+          "task_8": {
+            "points_reached": 2.5,
+            "points_earnable": 3,
+            "comments": "Quelle 3 (Document from Website): Fehlt Author, YearAccessed",
+            "reviewed": true
+          },
+          "task_9": {
+            "points_reached": 0,
+            "points_earnable": 1,
+            "comments": "Zitier-Markierungen [ZITAT 1/2/3] noch vorhanden",
+            "reviewed": true
+          }
+        }
+      }
+    },
+    "29gc_schwab_chiara_probe": {
+      "Key": "29gc_schwab_chiara_probe",
+      "name": "Schwab Chiara Probe",
+      "surname": "29Gc",
+      "results": {
+        "part_1": {
+          "task_1": {
+            "points_reached": 0,
+            "points_earnable": 1,
+            "comments": "Titelblatt nicht korrekt erstellt oder Markierungen nicht entfernt",
+            "reviewed": true
+          },
+          "task_10": {
+            "points_reached": 0,
+            "points_earnable": 2,
+            "comments": "Literaturverzeichnis nicht gefunden",
+            "reviewed": true
+          },
+          "task_11": {
+            "points_reached": 0,
+            "points_earnable": 1,
+            "comments": "Abbildungsverzeichnis nicht gefunden",
+            "reviewed": true
+          },
+          "task_2": {
+            "points_reached": 0,
+            "points_earnable": 2,
+            "comments": "Unterstreichungen noch im Text vorhanden; Markierungen noch im Text vorhanden; Fett/Kursiv-Formatierung in normalen Absätzen vorhanden; Formatierung nicht korrekt entfernt",
+            "reviewed": true
+          },
+          "task_3": {
+            "points_reached": 0,
+            "points_earnable": 2,
+            "comments": "KAPITEL-Markierungen noch vorhanden; UNTERKAPITEL-Markierungen noch vorhanden; Formatvorlagen nicht korrekt angewendet (Gefunden: H1: False, H2: False)",
+            "reviewed": true
+          },
+          "task_4": {
+            "points_reached": 0,
+            "points_earnable": 3,
+            "comments": "Überschrift 1 Formatvorlage nicht gefunden; Überschrift 2 Formatvorlage nicht gefunden; Standard-Formatvorlage: Zeilenabstand nicht 1,5; Standard-Formatvorlage: Schriftgrösse nicht 11 pt",
+            "reviewed": true
+          },
+          "task_5": {
+            "points_reached": 0,
+            "points_earnable": 2,
+            "comments": "Kopfzeile nicht gefunden; Fusszeile mit Seitenzahl nicht gefunden",
+            "reviewed": true
+          },
+          "task_6": {
+            "points_reached": 0,
+            "points_earnable": 2,
+            "comments": "Inhaltsverzeichnis nicht gefunden",
+            "reviewed": true
+          },
+          "task_7": {
+            "points_reached": 1,
+            "points_earnable": 3,
+            "comments": "BILD HIER-Markierung noch vorhanden; Bildbeschriftung nicht gefunden",
+            "reviewed": true
+          },
+          "task_8": {
+            "points_reached": 0,
+            "points_earnable": 3,
+            "comments": "Keine Quellen im Quellen-Manager gefunden",
+            "reviewed": true
+          },
+          "task_9": {
+            "points_reached": 0,
+            "points_earnable": 1,
+            "comments": "Zitier-Markierungen [ZITAT 1/2/3] noch vorhanden",
+            "reviewed": true
+          }
+        }
+      }
+    },
+    "29gc_schwärzler_zoe_probe": {
+      "Key": "29gc_schwärzler_zoe_probe",
+      "name": "Schwärzler Zoe Probe",
+      "surname": "29Gc",
+      "results": {
+        "part_1": {
+          "task_1": {
+            "points_reached": 1,
+            "points_earnable": 1,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_10": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_11": {
+            "points_reached": 0.5,
+            "points_earnable": 1,
+            "comments": "Kein Seitenumbruch nach Abbildungsverzeichnis",
+            "reviewed": true
+          },
+          "task_2": {
+            "points_reached": 0,
+            "points_earnable": 2,
+            "comments": "Unterstreichungen noch im Text vorhanden; Markierungen noch im Text vorhanden; Fett/Kursiv-Formatierung in normalen Absätzen vorhanden; Formatierung nicht korrekt entfernt",
+            "reviewed": true
+          },
+          "task_3": {
+            "points_reached": 1,
+            "points_earnable": 2,
+            "comments": "Formatvorlagen nicht korrekt angewendet (Gefunden: H1: True, H2: False)",
+            "reviewed": true
+          },
+          "task_4": {
+            "points_reached": 1,
+            "points_earnable": 3,
+            "comments": "Überschrift 2 Formatvorlage nicht gefunden; Standard-Formatvorlage: Zeilenabstand nicht 1,5; Standard-Formatvorlage: Schriftgrösse nicht 11 pt",
+            "reviewed": true
+          },
+          "task_5": {
+            "points_reached": 1,
+            "points_earnable": 2,
+            "comments": "Fusszeile mit Seitenzahl nicht gefunden",
+            "reviewed": true
+          },
+          "task_6": {
+            "points_reached": 1.5,
+            "points_earnable": 2,
+            "comments": "Kein Seitenumbruch nach Inhaltsverzeichnis",
+            "reviewed": true
+          },
+          "task_7": {
+            "points_reached": 3,
+            "points_earnable": 3,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_8": {
+            "points_reached": 2.5,
+            "points_earnable": 3,
+            "comments": "Quelle 1 (Website): Fehlt YearAccessed; Quelle 3 (Document from Website): Fehlt Author, YearAccessed",
+            "reviewed": true
+          },
+          "task_9": {
+            "points_reached": 1,
+            "points_earnable": 1,
+            "comments": "",
+            "reviewed": true
+          }
+        }
+      }
+    },
+    "29gc_sony_christina_probe": {
+      "Key": "29gc_sony_christina_probe",
+      "name": "Sony Christina Probe",
+      "surname": "29Gc",
+      "results": {
+        "part_1": {
+          "task_1": {
+            "points_reached": 1,
+            "points_earnable": 1,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_10": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_11": {
+            "points_reached": 0.5,
+            "points_earnable": 1,
+            "comments": "Kein Seitenumbruch nach Abbildungsverzeichnis",
+            "reviewed": true
+          },
+          "task_2": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_3": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_4": {
+            "points_reached": 1,
+            "points_earnable": 3,
+            "comments": "Überschrift 1: Schriftart nicht Arial; Überschrift 1: Nicht fett; Überschrift 2: Schriftart nicht Arial; Überschrift 2: Nicht fett; Standard-Formatvorlage: Zeilenabstand nicht 1,5; Standard-Formatvorlage: Schriftgrösse nicht 11 pt",
+            "reviewed": true
+          },
+          "task_5": {
+            "points_reached": 1,
+            "points_earnable": 2,
+            "comments": "Fusszeile mit Seitenzahl nicht gefunden",
+            "reviewed": true
+          },
+          "task_6": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_7": {
+            "points_reached": 3,
+            "points_earnable": 3,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_8": {
+            "points_reached": 3,
+            "points_earnable": 3,
+            "comments": "Quelle 1 (Website): Fehlt YearAccessed; Quelle 3 (Document from Website): Fehlt YearAccessed",
+            "reviewed": true
+          },
+          "task_9": {
+            "points_reached": 1,
+            "points_earnable": 1,
+            "comments": "",
+            "reviewed": true
+          }
+        }
+      }
+    },
+    "29gc_tinguely_aline_probe": {
+      "Key": "29gc_tinguely_aline_probe",
+      "name": "Tinguely Aline Probe",
+      "surname": "29Gc",
+      "results": {
+        "part_1": {
+          "task_1": {
+            "points_reached": 0,
+            "points_earnable": 1,
+            "comments": "Titelblatt nicht korrekt erstellt oder Markierungen nicht entfernt",
+            "reviewed": true
+          },
+          "task_10": {
+            "points_reached": 0,
+            "points_earnable": 2,
+            "comments": "Literaturverzeichnis nicht gefunden",
+            "reviewed": true
+          },
+          "task_11": {
+            "points_reached": 0,
+            "points_earnable": 1,
+            "comments": "Abbildungsverzeichnis nicht gefunden",
+            "reviewed": true
+          },
+          "task_2": {
+            "points_reached": 0,
+            "points_earnable": 2,
+            "comments": "Unterstreichungen noch im Text vorhanden; Markierungen noch im Text vorhanden; Fett/Kursiv-Formatierung in normalen Absätzen vorhanden; Formatierung nicht korrekt entfernt",
+            "reviewed": true
+          },
+          "task_3": {
+            "points_reached": 0,
+            "points_earnable": 2,
+            "comments": "KAPITEL-Markierungen noch vorhanden; UNTERKAPITEL-Markierungen noch vorhanden; Formatvorlagen nicht korrekt angewendet (Gefunden: H1: False, H2: False)",
+            "reviewed": true
+          },
+          "task_4": {
+            "points_reached": 0,
+            "points_earnable": 3,
+            "comments": "Überschrift 1 Formatvorlage nicht gefunden; Überschrift 2 Formatvorlage nicht gefunden; Standard-Formatvorlage: Zeilenabstand nicht 1,5; Standard-Formatvorlage: Schriftgrösse nicht 11 pt",
+            "reviewed": true
+          },
+          "task_5": {
+            "points_reached": 0,
+            "points_earnable": 2,
+            "comments": "Kopfzeile nicht gefunden; Fusszeile mit Seitenzahl nicht gefunden",
+            "reviewed": true
+          },
+          "task_6": {
+            "points_reached": 0,
+            "points_earnable": 2,
+            "comments": "Inhaltsverzeichnis nicht gefunden",
+            "reviewed": true
+          },
+          "task_7": {
+            "points_reached": 1,
+            "points_earnable": 3,
+            "comments": "BILD HIER-Markierung noch vorhanden; Bildbeschriftung nicht gefunden",
+            "reviewed": true
+          },
+          "task_8": {
+            "points_reached": 0,
+            "points_earnable": 3,
+            "comments": "Keine Quellen im Quellen-Manager gefunden",
+            "reviewed": true
+          },
+          "task_9": {
+            "points_reached": 0,
+            "points_earnable": 1,
+            "comments": "Zitier-Markierungen [ZITAT 1/2/3] noch vorhanden",
+            "reviewed": true
+          }
+        }
+      }
+    },
+    "29gc_tsega_bluemlein_probe": {
+      "Key": "29gc_tsega_bluemlein_probe",
+      "name": "Tsega Bluemlein Probe",
+      "surname": "29Gc",
+      "results": {
+        "part_1": {
+          "task_1": {
+            "points_reached": 1,
+            "points_earnable": 1,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_10": {
+            "points_reached": 1.5,
+            "points_earnable": 2,
+            "comments": "Literaturverzeichnis-Überschrift ist nicht Überschrift 1",
+            "reviewed": true
+          },
+          "task_11": {
+            "points_reached": 0,
+            "points_earnable": 1,
+            "comments": "Abbildungsverzeichnis nicht gefunden",
+            "reviewed": true
+          },
+          "task_2": {
+            "points_reached": 0,
+            "points_earnable": 2,
+            "comments": "Unterstreichungen noch im Text vorhanden; Fett/Kursiv-Formatierung in normalen Absätzen vorhanden; Formatierung nicht korrekt entfernt",
+            "reviewed": true
+          },
+          "task_3": {
+            "points_reached": 1,
+            "points_earnable": 2,
+            "comments": "Formatvorlagen nicht korrekt angewendet (Gefunden: H1: False, H2: True)",
+            "reviewed": true
+          },
+          "task_4": {
+            "points_reached": 0.2,
+            "points_earnable": 3,
+            "comments": "Überschrift 1 Formatvorlage nicht gefunden; Überschrift 2: Schriftart nicht Arial; Überschrift 2: Schriftgrösse nicht 14 pt; Überschrift 2: Nicht fett; Standard-Formatvorlage: Zeilenabstand nicht 1,5; Standard-Formatvorlage: Schriftgrösse nicht 11 pt",
+            "reviewed": true
+          },
+          "task_5": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_6": {
+            "points_reached": 1.5,
+            "points_earnable": 2,
+            "comments": "Kein Seitenumbruch nach Inhaltsverzeichnis",
+            "reviewed": true
+          },
+          "task_7": {
+            "points_reached": 2,
+            "points_earnable": 3,
+            "comments": "Bildbeschriftung nicht gefunden",
+            "reviewed": true
+          },
+          "task_8": {
+            "points_reached": 3,
+            "points_earnable": 3,
+            "comments": "Quelle 1 (Website): Fehlt YearAccessed; Quelle 3 (Document from Website): Fehlt YearAccessed",
+            "reviewed": true
+          },
+          "task_9": {
+            "points_reached": 1,
+            "points_earnable": 1,
+            "comments": "",
+            "reviewed": true
+          }
+        }
+      }
+    },
+    "29gc_von_schroeder_jaëlle_probe": {
+      "Key": "29gc_von_schroeder_jaëlle_probe",
+      "name": "von Schroeder Jaëlle Probe",
+      "surname": "29Gc",
+      "results": {
+        "part_1": {
+          "task_1": {
+            "points_reached": 1,
+            "points_earnable": 1,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_10": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_11": {
+            "points_reached": 0.5,
+            "points_earnable": 1,
+            "comments": "Kein Seitenumbruch nach Abbildungsverzeichnis",
+            "reviewed": true
+          },
+          "task_2": {
+            "points_reached": 1.5,
+            "points_earnable": 2,
+            "comments": "Fett/Kursiv-Formatierung in normalen Absätzen vorhanden",
+            "reviewed": true
+          },
+          "task_3": {
+            "points_reached": 1,
+            "points_earnable": 2,
+            "comments": "Formatvorlagen nicht korrekt angewendet (Gefunden: H1: True, H2: False)",
+            "reviewed": true
+          },
+          "task_4": {
+            "points_reached": 2,
+            "points_earnable": 3,
+            "comments": "Überschrift 2 Formatvorlage nicht gefunden",
+            "reviewed": true
+          },
+          "task_5": {
+            "points_reached": 1,
+            "points_earnable": 2,
+            "comments": "Fusszeile mit Seitenzahl nicht gefunden",
+            "reviewed": true
+          },
+          "task_6": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_7": {
+            "points_reached": 3,
+            "points_earnable": 3,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_8": {
+            "points_reached": 2.5,
+            "points_earnable": 3,
+            "comments": "Quelle 1 (Website): Fehlt YearAccessed; Quelle 3 (Document from Website): Fehlt Author, YearAccessed",
+            "reviewed": true
+          },
+          "task_9": {
+            "points_reached": 1,
+            "points_earnable": 1,
+            "comments": "",
+            "reviewed": true
+          }
+        }
+      }
+    },
+    "thea_thomas_thea_probe_29gc.docx": {
+      "Key": "thea_thomas_thea_probe_29gc.docx",
+      "name": "Thomas Thea Probe 29Gc.docx",
+      "surname": "Thea",
+      "results": {
+        "part_1": {
+          "task_1": {
+            "points_reached": 1,
+            "points_earnable": 1,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_10": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_11": {
+            "points_reached": 0.5,
+            "points_earnable": 1,
+            "comments": "Kein Seitenumbruch nach Abbildungsverzeichnis",
+            "reviewed": true
+          },
+          "task_2": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_3": {
+            "points_reached": 1,
+            "points_earnable": 2,
+            "comments": "Formatvorlagen nicht korrekt angewendet (Gefunden: H1: True, H2: False)",
+            "reviewed": true
+          },
+          "task_4": {
+            "points_reached": 2,
+            "points_earnable": 3,
+            "comments": "Überschrift 2 Formatvorlage nicht gefunden",
+            "reviewed": true
+          },
+          "task_5": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_6": {
+            "points_reached": 2,
+            "points_earnable": 2,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_7": {
+            "points_reached": 3,
+            "points_earnable": 3,
+            "comments": "",
+            "reviewed": true
+          },
+          "task_8": {
+            "points_reached": 3,
+            "points_earnable": 3,
+            "comments": "Quelle 3 (Document from Website): Fehlt Type",
+            "reviewed": true
+          },
+          "task_9": {
+            "points_reached": 1,
+            "points_earnable": 1,
+            "comments": "",
+            "reviewed": true
+          }
+        }
+      }
+    }
+  }
+}

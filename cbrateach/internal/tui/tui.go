@@ -6,6 +6,7 @@ import (
 	"cbrateach/internal/storage"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/huh"
 )
 
 type viewState int
@@ -16,6 +17,7 @@ const (
 	reviewFormView
 	testListView
 	testReviewView
+	importTestView
 )
 
 type Model struct {
@@ -32,11 +34,27 @@ type Model struct {
 	cursor          int
 
 	// Test review state
-	editingCell     bool
-	editingGifted   bool
-	selectedRow     int
-	selectedCol     int
-	editValue       string
+	editingCell   bool
+	editingGifted bool
+	selectedRow   int
+	selectedCol   int
+	editValue     string
+
+	// Import state
+	importStep           int // 0: Select File, 1: Details, 2: Match
+	importFilePickerForm *huh.Form
+	importFile           string
+	importData           *storage.JSONImport
+	importMatches        map[string]string // key -> studentName (for matched)
+	importUnmatched      []string          // keys (for unmatched)
+	importCandidates     []string          // list of course students available
+	importCursor         int               // Cursor for lists
+	importMatchFocus     bool              // True if selecting candidate
+
+	// Import Details
+	importName   string
+	importTopic  string
+	importWeight string
 
 	// UI dimensions
 	width  int
@@ -69,6 +87,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		return m, nil
 
+	case loadTestsMsg:
+		m.tests = msg
+		m.state = testListView // Ensure we are in test list view? Or stay in current if appropriate.
+		return m, nil
+
 	case tea.KeyMsg:
 		switch m.state {
 		case listView:
@@ -79,6 +102,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateTestListView(msg)
 		case testReviewView:
 			return m.updateTestReviewView(msg)
+		case importTestView:
+			return m.updateImportView(msg)
 		}
 	}
 
@@ -97,6 +122,8 @@ func (m Model) View() string {
 		return m.renderClassbookView()
 	case testListView:
 		return m.renderTestListView()
+	case importTestView:
+		return m.renderImportView()
 	case testReviewView:
 		return m.renderTestReviewView()
 	default:
@@ -119,5 +146,17 @@ func (m Model) saveCourses() tea.Cmd {
 	return func() tea.Msg {
 		m.storage.SaveCourses(m.courses)
 		return saveCoursesMsg{}
+	}
+}
+
+type loadTestsMsg []models.Test
+
+func (m Model) loadTestsCmd(courseID string) tea.Cmd {
+	return func() tea.Msg {
+		tests, err := m.storage.LoadTests(courseID)
+		if err != nil {
+			return loadTestsMsg{}
+		}
+		return loadTestsMsg(tests)
 	}
 }

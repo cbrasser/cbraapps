@@ -34,6 +34,34 @@ func (m Model) updateTestListView(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.editingGifted = false
 			m.state = testReviewView
 		}
+
+	case "a":
+		// Open import wizard
+		var cmd tea.Cmd
+		m, cmd = m.initImportView()
+		m.state = importTestView
+		return m, cmd
+
+	case "d":
+		// Delete test
+		if len(m.tests) > 0 && m.cursor < len(m.tests) {
+			return m, func() tea.Msg {
+				test := m.tests[m.cursor]
+				confirmed, err := ShowConfirmation("Delete Test", fmt.Sprintf("Are you sure you want to delete '%s'?", test.Title), "Yes, delete", "Cancel")
+				if err != nil || !confirmed {
+					return nil
+				}
+
+				if err := m.storage.DeleteTest(test.CourseID, test.ID); err != nil {
+					ShowMessage("Error", fmt.Sprintf("Failed to delete test: %v", err))
+					return nil
+				}
+
+				// Force reload of tests by switching states
+				// We can return a Msg to reload
+				return m.loadTestsCmd(test.CourseID)
+			}
+		}
 	}
 
 	return m, nil
@@ -88,6 +116,8 @@ func (m Model) renderTestListView() string {
 		"↑/k: up",
 		"↓/j: down",
 		"enter: open test",
+		"a: add test",
+		"d: delete test",
 		"esc: back",
 	}
 	b.WriteString(helpStyle.Render(strings.Join(help, " • ")))

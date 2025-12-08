@@ -55,6 +55,7 @@ type Question struct {
 type StudentScore struct {
 	StudentName    string             `json:"student_name"` // Full name
 	QuestionScores map[string]float64 `json:"question_scores"` // questionID -> points scored
+	QuestionComments map[string]string `json:"question_comments"` // questionID -> comment
 	TotalPoints    float64            `json:"total_points"`    // Calculated
 	Grade          float64            `json:"grade"`           // Calculated (1.0 to 6.0, rounded to 0.25)
 }

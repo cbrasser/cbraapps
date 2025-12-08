@@ -9,8 +9,8 @@ import (
 	"cbrateach/internal/email"
 	"cbrateach/internal/models"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/bubbles/table"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -241,13 +241,21 @@ func (m Model) renderTestReviewView() string {
 			points := score.QuestionScores[q.ID]
 			cellValue := fmt.Sprintf("%.1f", points)
 
-			// Highlight if editing this cell
-			if m.editingCell && m.selectedRow == i && m.selectedCol == j {
-				editCellStyle := lipgloss.NewStyle().
-					Foreground(lipgloss.Color("#000")).
-					Background(lipgloss.Color("#FFA500")).
-					Bold(true)
-				cellValue = editCellStyle.Render(fmt.Sprintf("%s_", m.editValue))
+			// Highlight if selected
+			if m.selectedRow == i && m.selectedCol == j {
+				if m.editingCell {
+					editCellStyle := lipgloss.NewStyle().
+						Foreground(lipgloss.Color("#000")).
+						Background(lipgloss.Color("#FFA500")).
+						Bold(true)
+					cellValue = editCellStyle.Render(fmt.Sprintf("%s_", m.editValue))
+				} else {
+					selectedCellStyle := lipgloss.NewStyle().
+						Foreground(lipgloss.Color("#000")).
+						Background(primaryColor).
+						Bold(true)
+					cellValue = selectedCellStyle.Render(cellValue)
+				}
 			}
 
 			row = append(row, cellValue)
@@ -297,7 +305,12 @@ func (m Model) renderTestReviewView() string {
 		avgGrade /= float64(len(test.StudentScores))
 	}
 
-	stats := fmt.Sprintf("Average Grade: %.2f  •  Students: %d  •  Weight: %.1f", avgGrade, len(test.StudentScores), test.Weight)
+	maxPoints := 0.0
+	for _, q := range test.Questions {
+		maxPoints += q.MaxPoints
+	}
+
+	stats := fmt.Sprintf("Average Grade: %.2f  •  Max Points: %.1f  •  Students: %d  •  Weight: %.1f", avgGrade, maxPoints, len(test.StudentScores), test.Weight)
 	b.WriteString(subtitleStyle.Render(stats) + "\n\n")
 
 	// Grade distribution chart
@@ -448,7 +461,7 @@ func (m Model) sendFeedbackEmails() tea.Cmd {
 
 		// Show summary and confirmation
 		summary := email.EmailSummary(emails)
-		confirmed, err := ShowConfirmation("Send Feedback Emails", summary)
+		confirmed, err := ShowConfirmation("Send Feedback Emails", summary, "Yes, send emails", "Cancel")
 		if err != nil || !confirmed {
 			return nil
 		}

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"cbrateach/internal/models"
+
 	"github.com/xuri/excelize/v2"
 )
 
@@ -247,4 +248,28 @@ func (s *Storage) ExportGradesXLSX(courseID, outputPath string) error {
 	}
 
 	return nil
+}
+
+// DeleteTest removes a test from the course
+func (s *Storage) DeleteTest(courseID, testID string) error {
+	tests, err := s.LoadTests(courseID)
+	if err != nil {
+		return err
+	}
+
+	newTests := []models.Test{}
+	found := false
+	for _, t := range tests {
+		if t.ID == testID {
+			found = true
+			continue
+		}
+		newTests = append(newTests, t)
+	}
+
+	if !found {
+		return fmt.Errorf("test not found: %s", testID)
+	}
+
+	return s.SaveTests(courseID, newTests)
 }
