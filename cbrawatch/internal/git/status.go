@@ -8,6 +8,7 @@ import (
 
 type RepoStatus struct {
 	Path              string
+	CustomName        string // Optional custom display name from config
 	HasUnstaged       bool
 	HasUncommitted    bool
 	HasUnpushed       bool
@@ -116,46 +117,80 @@ func isGitRepo(path string) bool {
 }
 
 func AddAll(repoPath string) error {
+	if !isGitRepo(repoPath) {
+		return fmt.Errorf("not a git repository: %s", repoPath)
+	}
+
 	cmd := exec.Command("git", "-C", repoPath, "add", ".")
 	if output, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("git add failed: %v\n%s", err, output)
+		return fmt.Errorf("git add failed: %v\n%s", err, string(output))
 	}
 	return nil
 }
 
 func Commit(repoPath, message string) error {
+	if !isGitRepo(repoPath) {
+		return fmt.Errorf("not a git repository: %s", repoPath)
+	}
+
+	if strings.TrimSpace(message) == "" {
+		return fmt.Errorf("commit message cannot be empty")
+	}
+
 	cmd := exec.Command("git", "-C", repoPath, "commit", "-m", message)
 	if output, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("git commit failed: %v\n%s", err, output)
+		outputStr := string(output)
+		// Check if there's nothing to commit
+		if strings.Contains(outputStr, "nothing to commit") {
+			return fmt.Errorf("nothing to commit (working tree clean)")
+		}
+		return fmt.Errorf("git commit failed: %v\n%s", err, outputStr)
 	}
 	return nil
 }
 
 func Push(repoPath string) error {
+	if !isGitRepo(repoPath) {
+		return fmt.Errorf("not a git repository: %s", repoPath)
+	}
+
 	cmd := exec.Command("git", "-C", repoPath, "push")
 	if output, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("git push failed: %v\n%s", err, output)
+		outputStr := string(output)
+		// Check for common push errors
+		if strings.Contains(outputStr, "no upstream branch") {
+			return fmt.Errorf("no upstream branch configured. Use 'git push -u origin <branch>' first")
+		}
+		return fmt.Errorf("git push failed: %v\n%s", err, outputStr)
 	}
 	return nil
 }
 
 func Pull(repoPath string) error {
+	if !isGitRepo(repoPath) {
+		return fmt.Errorf("not a git repository: %s", repoPath)
+	}
+
 	cmd := exec.Command("git", "-C", repoPath, "pull")
 	if output, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("git pull failed: %v\n%s", err, output)
+		return fmt.Errorf("git pull failed: %v\n%s", err, string(output))
 	}
 	return nil
 }
 
 func AddCommitPush(repoPath, message string) error {
+	if !isGitRepo(repoPath) {
+		return fmt.Errorf("not a git repository: %s", repoPath)
+	}
+
 	if err := AddAll(repoPath); err != nil {
-		return err
+		return fmt.Errorf("add: %w", err)
 	}
 	if err := Commit(repoPath, message); err != nil {
-		return err
+		return fmt.Errorf("commit: %w", err)
 	}
 	if err := Push(repoPath); err != nil {
-		return err
+		return fmt.Errorf("push: %w", err)
 	}
 	return nil
 }

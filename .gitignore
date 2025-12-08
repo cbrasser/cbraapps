@@ -6,6 +6,7 @@ cbratube/cbratube
 cbracal/cbracal
 cbranotes/cbranotes
 cbratasks/cbratasks
+cbrawatch/cbrawatch
 
 # Binaries anywhere in the repo (catch misplaced binaries)
 **/cbrabuild
@@ -14,6 +15,7 @@ cbratasks/cbratasks
 **/cbracal
 **/cbranotes
 **/cbratasks
+**/cbrawatch
 **/cbraslides
 
 # stray config
@@ -22,7 +24,8 @@ cbracal.toml
 cbranotes.toml
 cbraslides.toml
 cbratasks.toml
-cbratube.tom
+cbratube.toml
+cbrawatch.toml
 
 # stray config
 cbrabuild.toml
@@ -31,6 +34,7 @@ cbranotes.toml
 cbraslides.toml
 cbratasks.toml
 cbratube.toml
+cbrawatch.toml
 # Go build artifacts
 *.exe
 *.exe~

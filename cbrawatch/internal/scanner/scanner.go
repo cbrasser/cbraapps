@@ -12,9 +12,20 @@ import (
 func ScanRepositories(cfg *config.Config) []git.RepoStatus {
 	var repos []git.RepoStatus
 	seen := make(map[string]bool)
+	customNames := make(map[string]string) // Map absolute path to custom name
 
 	for _, pathCfg := range cfg.Paths {
 		expandedPath := expandPath(pathCfg.Path)
+
+		// Store custom name if provided, normalize the path
+		if pathCfg.Name != "" {
+			absPath, err := filepath.Abs(expandedPath)
+			if err == nil {
+				// Clean the path to normalize it (removes trailing slashes, etc.)
+				cleanPath := filepath.Clean(absPath)
+				customNames[cleanPath] = pathCfg.Name
+			}
+		}
 
 		// Determine scan depth for this path
 		depth := pathCfg.ScanDepth
@@ -24,6 +35,14 @@ func ScanRepositories(cfg *config.Config) []git.RepoStatus {
 
 		foundRepos := scanPath(expandedPath, depth, cfg.ShowHidden, seen)
 		repos = append(repos, foundRepos...)
+	}
+
+	// Apply custom names to repos (normalize repo paths for comparison)
+	for i := range repos {
+		cleanRepoPath := filepath.Clean(repos[i].Path)
+		if customName, ok := customNames[cleanRepoPath]; ok {
+			repos[i].CustomName = customName
+		}
 	}
 
 	return repos
@@ -37,7 +56,9 @@ func scanPath(rootPath string, maxDepth int, showHidden bool, seen map[string]bo
 		absPath, _ := filepath.Abs(rootPath)
 		if !seen[absPath] {
 			seen[absPath] = true
-			repos = append(repos, git.CheckStatus(rootPath))
+			status := git.CheckStatus(absPath)
+			status.Path = filepath.Clean(absPath) // Normalize the path
+			repos = append(repos, status)
 		}
 		return repos
 	}
@@ -83,7 +104,9 @@ func scanRecursive(path string, maxDepth, currentDepth int, showHidden bool, see
 			absPath, _ := filepath.Abs(fullPath)
 			if !seen[absPath] {
 				seen[absPath] = true
-				repos = append(repos, git.CheckStatus(fullPath))
+				status := git.CheckStatus(absPath)
+				status.Path = filepath.Clean(absPath) // Normalize the path
+				repos = append(repos, status)
 			}
 			// Don't recurse into git repos
 			continue

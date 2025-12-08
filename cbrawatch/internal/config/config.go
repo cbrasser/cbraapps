@@ -9,13 +9,16 @@ import (
 )
 
 type Config struct {
-	Paths      []PathConfig `toml:"paths"`
-	MaxDepth   int          `toml:"max_depth"`
-	ShowHidden bool         `toml:"show_hidden"`
+	Paths               []PathConfig `toml:"paths"`
+	MaxDepth            int          `toml:"max_depth"`
+	ShowHidden          bool         `toml:"show_hidden"`
+	DefaultCommitMsg    string       `toml:"default_commit_message"`
+	RefreshIntervalSecs int          `toml:"refresh_interval_seconds"`
 }
 
 type PathConfig struct {
 	Path      string `toml:"path"`
+	Name      string `toml:"name"`       // Optional custom name for display
 	ScanDepth int    `toml:"scan_depth"` // 0 = exact path only, -1 = use global max_depth
 }
 
@@ -28,8 +31,10 @@ func DefaultConfig() *Config {
 				ScanDepth: -1, // Use global max_depth
 			},
 		},
-		MaxDepth:   2,
-		ShowHidden: false,
+		MaxDepth:            2,
+		ShowHidden:          false,
+		DefaultCommitMsg:    "Quick update",
+		RefreshIntervalSecs: 0, // 0 = manual refresh only
 	}
 }
 
