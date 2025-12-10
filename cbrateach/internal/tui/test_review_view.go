@@ -150,6 +150,28 @@ func (m Model) updateTestReviewView(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if test.Status == "confirmed" {
 			return m, m.exportFeedbackFiles()
 		}
+
+	case "r":
+		// Open file rename view
+		if test.Status == "confirmed" {
+			m.state = fileRenameView
+			return m.initFileRenameView()
+		}
+
+	case "i":
+		// Toggle incognito mode
+		m.incognitoMode = !m.incognitoMode
+
+	case "d":
+		// Open data view
+		m.state = testDataView
+		return m, nil
+
+	case "a":
+		// Add missing student to test
+		if test.Status == "review" {
+			return m, m.addMissingStudentToTest()
+		}
 	}
 
 	return m, nil
@@ -198,7 +220,11 @@ func (m Model) renderTestReviewView() string {
 	var b strings.Builder
 
 	// Title
-	title := titleStyle.Render(fmt.Sprintf("Test Review: %s - %s", test.Title, test.Topic))
+	titleText := fmt.Sprintf("Test Review: %s - %s", test.Title, test.Topic)
+	if m.incognitoMode {
+		titleText += " [INCOGNITO MODE]"
+	}
+	title := titleStyle.Render(titleText)
 	b.WriteString(title + "\n")
 
 	// Status and gifted points
@@ -240,28 +266,46 @@ func (m Model) renderTestReviewView() string {
 	// Build rows
 	var rows []table.Row
 
+	// Calculate averages first (needed for footer and stats)
+	avgGrade := 0.0
+	avgTotal := 0.0
+	avgPerQuestion := make(map[string]float64)
+
+	for _, score := range test.StudentScores {
+		avgGrade += score.Grade
+		avgTotal += score.TotalPoints
+		for qID, points := range score.QuestionScores {
+			avgPerQuestion[qID] += points
+		}
+	}
+	if len(test.StudentScores) > 0 {
+		avgGrade /= float64(len(test.StudentScores))
+		avgTotal /= float64(len(test.StudentScores))
+		for qID := range avgPerQuestion {
+			avgPerQuestion[qID] /= float64(len(test.StudentScores))
+		}
+	}
+
 	for i, score := range test.StudentScores {
-		row := table.Row{score.StudentName}
+		// Apply incognito mode to student name
+		studentName := score.StudentName
+		if m.incognitoMode {
+			studentName = "*****"
+		}
+
+		row := table.Row{studentName}
 
 		// Add question scores
 		for j, q := range test.Questions {
 			points := score.QuestionScores[q.ID]
 			cellValue := fmt.Sprintf("%.1f", points)
 
-			// Highlight if selected
+			// Show editing indicator
 			if m.selectedRow == i && m.selectedCol == j {
 				if m.editingCell {
-					editCellStyle := lipgloss.NewStyle().
-						Foreground(lipgloss.Color("#000")).
-						Background(lipgloss.Color("#FFA500")).
-						Bold(true)
-					cellValue = editCellStyle.Render(fmt.Sprintf("%s_", m.editValue))
+					cellValue = fmt.Sprintf("%s_", m.editValue)
 				} else {
-					selectedCellStyle := lipgloss.NewStyle().
-						Foreground(lipgloss.Color("#000")).
-						Background(primaryColor).
-						Bold(true)
-					cellValue = selectedCellStyle.Render(cellValue)
+					cellValue = "→ " + cellValue
 				}
 			}
 
@@ -269,18 +313,39 @@ func (m Model) renderTestReviewView() string {
 		}
 
 		// Add total and grade
-		row = append(row, fmt.Sprintf("%.1f", score.TotalPoints))
-		row = append(row, fmt.Sprintf("%.2f", score.Grade))
+		totalCell := fmt.Sprintf("%.1f", score.TotalPoints)
+
+		// Mark grades < 4.0 with a visual indicator (no lipgloss styling to avoid conflicts)
+		// Swiss grading system: grades below 4.0 are failing
+		gradeCell := fmt.Sprintf("%.2f", score.Grade)
+		if score.Grade < 4.0 {
+			gradeCell = "⚠ " + gradeCell
+		}
+
+		row = append(row, totalCell)
+		row = append(row, gradeCell)
 
 		rows = append(rows, row)
 	}
 
-	// Create table
+	// Add footer row with average points per task
+	footerRow := table.Row{"Average"}
+	for _, q := range test.Questions {
+		footerRow = append(footerRow, fmt.Sprintf("%.1f", avgPerQuestion[q.ID]))
+	}
+	footerRow = append(footerRow, fmt.Sprintf("%.1f", avgTotal))
+	footerRow = append(footerRow, fmt.Sprintf("%.2f", avgGrade))
+
+	rows = append(rows, footerRow)
+
+	// Create table - use more height now that graph is removed
+	// Add 2 for header, and limit to reasonable max
+	tableHeight := min(len(rows)+2, 30)
 	t := table.New(
 		table.WithColumns(columns),
 		table.WithRows(rows),
 		table.WithFocused(true),
-		table.WithHeight(min(len(rows)+1, 20)),
+		table.WithHeight(tableHeight),
 	)
 
 	// Style table
@@ -304,14 +369,6 @@ func (m Model) renderTestReviewView() string {
 	b.WriteString(t.View() + "\n\n")
 
 	// Statistics
-	avgGrade := 0.0
-	for _, score := range test.StudentScores {
-		avgGrade += score.Grade
-	}
-	if len(test.StudentScores) > 0 {
-		avgGrade /= float64(len(test.StudentScores))
-	}
-
 	maxPoints := 0.0
 	for _, q := range test.Questions {
 		maxPoints += q.MaxPoints
@@ -319,9 +376,6 @@ func (m Model) renderTestReviewView() string {
 
 	stats := fmt.Sprintf("Average Grade: %.2f  •  Max Points: %.1f  •  Students: %d  •  Weight: %.1f", avgGrade, maxPoints, len(test.StudentScores), test.Weight)
 	b.WriteString(subtitleStyle.Render(stats) + "\n\n")
-
-	// Grade distribution chart
-	b.WriteString(m.renderGradeDistribution(test) + "\n")
 
 	// Find and display missing students
 	if m.selectedCourse < len(m.courses) {
@@ -351,11 +405,11 @@ func (m Model) renderTestReviewView() string {
 		"↑↓←→/hjkl: navigate",
 	}
 	if test.Status == "review" {
-		help = append(help, "e: edit cell", "g: edit gifted points", "c: confirm test")
+		help = append(help, "e: edit cell", "g: edit gifted points", "a: add missing student", "c: confirm test")
 	} else {
-		help = append(help, "u: unconfirm", "f: send feedback", "x: export feedback files")
+		help = append(help, "u: unconfirm", "f: send feedback", "x: export feedback files", "r: rename submissions")
 	}
-	help = append(help, "esc: back")
+	help = append(help, "d: data view", "i: incognito", "esc: back")
 
 	b.WriteString(helpStyle.Render(strings.Join(help, " • ")))
 
@@ -616,4 +670,78 @@ func sanitizePathComponent(s string) string {
 	s = strings.ReplaceAll(s, "/", "_")
 	s = strings.ReplaceAll(s, "\\", "_")
 	return s
+}
+
+func (m Model) addMissingStudentToTest() tea.Cmd {
+	return tea.Cmd(func() tea.Msg {
+		if m.selectedTest >= len(m.tests) {
+			return nil
+		}
+
+		test := &m.tests[m.selectedTest]
+
+		if m.selectedCourse >= len(m.courses) {
+			ShowMessage("Error", "Course not found")
+			return nil
+		}
+
+		course := m.courses[m.selectedCourse]
+
+		// Find missing students
+		missingStudents := []models.Student{}
+		for _, student := range course.Students {
+			found := false
+			for _, score := range test.StudentScores {
+				if score.StudentName == student.Name {
+					found = true
+					break
+				}
+			}
+			if !found {
+				missingStudents = append(missingStudents, student)
+			}
+		}
+
+		if len(missingStudents) == 0 {
+			ShowMessage("No Missing Students", "All students from this course are already in the test.")
+			return nil
+		}
+
+		// Show selection dialog
+		selectedStudent, err := ShowMissingStudentSelection(missingStudents)
+		if err != nil {
+			// User cancelled or error
+			return nil
+		}
+
+		// Create new student score with 0.0 for all questions
+		newScore := models.StudentScore{
+			StudentName:      selectedStudent.Name,
+			QuestionScores:   make(map[string]float64),
+			QuestionComments: make(map[string]string),
+			TotalPoints:      0.0,
+			Grade:            6.0, // Worst grade in Swiss system
+		}
+
+		// Initialize all question scores to 0.0
+		for _, q := range test.Questions {
+			newScore.QuestionScores[q.ID] = 0.0
+		}
+
+		// Calculate grade
+		newScore.Grade = test.CalculateGrade(&newScore)
+
+		// Add to test
+		test.StudentScores = append(test.StudentScores, newScore)
+
+		// Save updated test
+		if err := m.storage.UpdateTest(*test); err != nil {
+			ShowMessage("Error", fmt.Sprintf("Failed to add student: %v", err))
+			return nil
+		}
+
+		ShowMessage("Student Added", fmt.Sprintf("%s has been added to the test with 0.0 points for all questions.", selectedStudent.Name))
+
+		return nil
+	})
 }

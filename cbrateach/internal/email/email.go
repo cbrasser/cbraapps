@@ -31,6 +31,7 @@ func ProcessTemplate(template string, studentName, testName, courseName string, 
 }
 
 // FindFeedbackFiles finds all files in the directory that match the student's email
+// Also scans the submissions subdirectory for matching submission files
 // Uses exact matching based on email prefix
 func FindFeedbackFiles(directory, studentEmail string) ([]string, error) {
 	files, err := os.ReadDir(directory)
@@ -41,10 +42,11 @@ func FindFeedbackFiles(directory, studentEmail string) ([]string, error) {
 	// Generate expected filename from email: get part before @, replace dots with dashes
 	emailPrefix := strings.Split(studentEmail, "@")[0]
 	emailPrefix = strings.ReplaceAll(emailPrefix, ".", "-")
-	expectedFilename := emailPrefix + "feedback.txt"
+	expectedFeedbackFilename := emailPrefix + "feedback.txt"
 
 	var exactMatches []string
 
+	// Scan feedback directory for feedback.txt files
 	for _, file := range files {
 		if file.IsDir() {
 			continue
@@ -61,8 +63,35 @@ func FindFeedbackFiles(directory, studentEmail string) ([]string, error) {
 		}
 
 		// Exact match only
-		if strings.ToLower(file.Name()) == strings.ToLower(expectedFilename) {
+		if strings.ToLower(file.Name()) == strings.ToLower(expectedFeedbackFilename) {
 			exactMatches = append(exactMatches, fullPath)
+		}
+	}
+
+	// Also scan submissions subdirectory for matching submission files
+	submissionsDir := filepath.Join(filepath.Dir(directory), "submissions")
+	if submissionFiles, err := os.ReadDir(submissionsDir); err == nil {
+		for _, file := range submissionFiles {
+			if file.IsDir() {
+				continue
+			}
+
+			fullPath := filepath.Join(submissionsDir, file.Name())
+			fileInfo, err := os.Stat(fullPath)
+			if err != nil {
+				continue
+			}
+			if fileInfo.Size() == 0 {
+				continue
+			}
+
+			// Check if filename starts with the email prefix (with dashes)
+			// e.g., "firstname-lastname.pdf" matches "firstname-lastname"
+			fileNameLower := strings.ToLower(file.Name())
+			if strings.HasPrefix(fileNameLower, strings.ToLower(emailPrefix+".")) ||
+			   strings.HasPrefix(fileNameLower, strings.ToLower(emailPrefix+"-")) {
+				exactMatches = append(exactMatches, fullPath)
+			}
 		}
 	}
 

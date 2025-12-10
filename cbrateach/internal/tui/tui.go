@@ -19,6 +19,8 @@ const (
 	testListView
 	testReviewView
 	importTestView
+	fileRenameView
+	testDataView
 )
 
 type Model struct {
@@ -56,6 +58,12 @@ type Model struct {
 	importName   string
 	importTopic  string
 	importWeight string
+
+	// File rename state
+	fileRenameState fileRenameState
+
+	// Incognito mode (hide student names)
+	incognitoMode bool
 
 	// Confirmation dialog state
 	showingConfirmation  bool
@@ -129,6 +137,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateTestReviewView(msg)
 		case importTestView:
 			return m.updateImportView(msg)
+		case fileRenameView:
+			return m.updateFileRenameView(msg)
+		case testDataView:
+			return m.updateTestDataView(msg)
 		}
 	}
 
@@ -162,6 +174,10 @@ func (m Model) View() string {
 		return m.renderImportView()
 	case testReviewView:
 		return m.renderTestReviewView()
+	case fileRenameView:
+		return m.renderFileRenameView()
+	case testDataView:
+		return m.renderTestDataView()
 	default:
 		return "Unknown view"
 	}

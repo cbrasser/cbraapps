@@ -361,3 +361,41 @@ func ShowEmailPreview(sampleEmail, currentMessage string, totalCount int) (*Emai
 
 	return result, nil
 }
+
+// ShowMissingStudentSelection shows a selection dialog for missing students
+func ShowMissingStudentSelection(missingStudents []models.Student) (*models.Student, error) {
+	if len(missingStudents) == 0 {
+		return nil, errors.New("no missing students")
+	}
+
+	var selectedName string
+
+	// Build options from missing students
+	options := make([]huh.Option[string], len(missingStudents))
+	for i, student := range missingStudents {
+		options[i] = huh.NewOption(student.Name, student.Name)
+	}
+
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title("Select Missing Student to Add").
+				Description("Student will be added with 0.0 points for all questions").
+				Options(options...).
+				Value(&selectedName),
+		),
+	)
+
+	if err := form.Run(); err != nil {
+		return nil, err
+	}
+
+	// Find the selected student
+	for i := range missingStudents {
+		if missingStudents[i].Name == selectedName {
+			return &missingStudents[i], nil
+		}
+	}
+
+	return nil, errors.New("student not found")
+}
