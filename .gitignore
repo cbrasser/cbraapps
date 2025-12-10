@@ -6,7 +6,7 @@ cbratube/cbratube
 cbracal/cbracal
 cbranotes/cbranotes
 cbratasks/cbratasks
-cbrawatch/cbrawatch
+# cbrawatch/cbrawatch
 
 # Binaries anywhere in the repo (catch misplaced binaries)
 **/cbrabuild
