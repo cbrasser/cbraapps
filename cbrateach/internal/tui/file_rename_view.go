@@ -20,6 +20,7 @@ type fileRenameState struct {
 	cursor          int               // Current cursor position in file list
 	matchFocus      bool              // True if selecting candidate, false if selecting file
 	candidateCursor int               // Cursor position in candidates list (unused but kept for consistency)
+	isFolderMode    bool              // True if renaming folders, false if renaming files
 }
 
 func (m Model) initFileRenameView() (Model, tea.Cmd) {
@@ -53,7 +54,7 @@ func (m Model) initFileRenameView() (Model, tea.Cmd) {
 		files:           []string{},
 	}
 
-	// Scan directory for files
+	// Scan directory for files or folders
 	entries, err := os.ReadDir(submissionsPath)
 	if err != nil {
 		// Directory doesn't exist or can't be read
@@ -61,10 +62,33 @@ func (m Model) initFileRenameView() (Model, tea.Cmd) {
 		return m, nil
 	}
 
-	// Collect all files
+	// Detect if we have folders or files
+	// Count folders and files to determine mode
+	folderCount := 0
+	fileCount := 0
 	for _, entry := range entries {
-		if !entry.IsDir() {
-			state.files = append(state.files, entry.Name())
+		if entry.IsDir() {
+			folderCount++
+		} else {
+			fileCount++
+		}
+	}
+
+	// Determine mode: if we have folders, use folder mode; otherwise use file mode
+	state.isFolderMode = folderCount > 0
+
+	// Collect all files or folders based on mode
+	for _, entry := range entries {
+		if state.isFolderMode {
+			// In folder mode, collect folders
+			if entry.IsDir() {
+				state.files = append(state.files, entry.Name())
+			}
+		} else {
+			// In file mode, collect files (original behavior)
+			if !entry.IsDir() {
+				state.files = append(state.files, entry.Name())
+			}
 		}
 	}
 
@@ -84,11 +108,14 @@ func (m Model) initFileRenameView() (Model, tea.Cmd) {
 		}
 	}
 
-	// Auto-match files where possible
+	// Auto-match files or folders where possible
 	for _, filename := range state.files {
 		filenameLower := strings.ToLower(filename)
-		// Remove extension for matching
-		filenameBase := strings.TrimSuffix(filenameLower, filepath.Ext(filenameLower))
+		// Remove extension for matching (only relevant for files)
+		filenameBase := filenameLower
+		if !state.isFolderMode {
+			filenameBase = strings.TrimSuffix(filenameLower, filepath.Ext(filenameLower))
+		}
 
 		for _, candidate := range state.candidates {
 			candidateLower := strings.ToLower(candidate)
@@ -347,11 +374,20 @@ func (m Model) applyFileRenames() tea.Cmd {
 		for oldName, emailPrefix := range state.matches {
 			oldPath := filepath.Join(state.submissionsPath, oldName)
 
-			// Build new filename: emailPrefix with dots replaced by dashes + extension
-			// e.g., "firstname.lastname" becomes "firstname-lastname.pdf"
-			ext := filepath.Ext(oldName)
+			var newName string
 			normalizedPrefix := strings.ReplaceAll(emailPrefix, ".", "-")
-			newName := normalizedPrefix + ext
+
+			if state.isFolderMode {
+				// In folder mode, just use the normalized prefix (no extension)
+				newName = normalizedPrefix
+			} else {
+				// In file mode, add extension
+				// Build new filename: emailPrefix with dots replaced by dashes + extension
+				// e.g., "firstname.lastname" becomes "firstname-lastname.pdf"
+				ext := filepath.Ext(oldName)
+				newName = normalizedPrefix + ext
+			}
+
 			newPath := filepath.Join(state.submissionsPath, newName)
 
 			// Check if target already exists
@@ -371,9 +407,13 @@ func (m Model) applyFileRenames() tea.Cmd {
 		}
 
 		unmatchedCount := len(state.files) - len(state.matches)
+		itemType := "files"
+		if state.isFolderMode {
+			itemType = "folders"
+		}
 		ShowMessage("Rename Complete",
-			fmt.Sprintf("Renamed %d files.\nFailed: %d\nRemaining unmatched: %d",
-				successCount, failCount, unmatchedCount))
+			fmt.Sprintf("Renamed %d %s.\nFailed: %d\nRemaining unmatched: %d",
+				successCount, itemType, failCount, unmatchedCount))
 
 		return nil
 	})
@@ -385,7 +425,11 @@ func (m Model) renderFileRenameView() string {
 	var b strings.Builder
 
 	// Title
-	title := titleStyle.Render("File Rename - Match Submissions to Students")
+	itemType := "Files"
+	if state.isFolderMode {
+		itemType = "Folders"
+	}
+	title := titleStyle.Render(fmt.Sprintf("%s Rename - Match Submissions to Students", itemType))
 	b.WriteString(title + "\n")
 	b.WriteString(subtitleStyle.Render("Review matches. Press Enter to change a match.") + "\n\n")
 

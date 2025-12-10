@@ -68,29 +68,75 @@ func FindFeedbackFiles(directory, studentEmail string) ([]string, error) {
 		}
 	}
 
-	// Also scan submissions subdirectory for matching submission files
+	// Also scan submissions subdirectory for matching submission files or folders
 	submissionsDir := filepath.Join(filepath.Dir(directory), "submissions")
-	if submissionFiles, err := os.ReadDir(submissionsDir); err == nil {
-		for _, file := range submissionFiles {
-			if file.IsDir() {
-				continue
+	if submissionEntries, err := os.ReadDir(submissionsDir); err == nil {
+		// Detect if we have folders or files in submissions
+		hasFolders := false
+		for _, entry := range submissionEntries {
+			if entry.IsDir() {
+				hasFolders = true
+				break
 			}
+		}
 
-			fullPath := filepath.Join(submissionsDir, file.Name())
-			fileInfo, err := os.Stat(fullPath)
-			if err != nil {
-				continue
-			}
-			if fileInfo.Size() == 0 {
-				continue
-			}
+		if hasFolders {
+			// Folder mode: find the student's folder and attach all files within it
+			for _, entry := range submissionEntries {
+				if !entry.IsDir() {
+					continue
+				}
 
-			// Check if filename starts with the email prefix (with dashes)
-			// e.g., "firstname-lastname.pdf" matches "firstname-lastname"
-			fileNameLower := strings.ToLower(file.Name())
-			if strings.HasPrefix(fileNameLower, strings.ToLower(emailPrefix+".")) ||
-			   strings.HasPrefix(fileNameLower, strings.ToLower(emailPrefix+"-")) {
-				exactMatches = append(exactMatches, fullPath)
+				folderNameLower := strings.ToLower(entry.Name())
+				// Check if folder name matches the email prefix
+				// The folder should be named like "firstname-lastname" matching the email prefix
+				if folderNameLower == strings.ToLower(emailPrefix) {
+					// Found the student's folder, attach all files in it
+					studentFolderPath := filepath.Join(submissionsDir, entry.Name())
+					if folderFiles, err := os.ReadDir(studentFolderPath); err == nil {
+						for _, file := range folderFiles {
+							if file.IsDir() {
+								continue // Skip subdirectories
+							}
+
+							fullPath := filepath.Join(studentFolderPath, file.Name())
+							fileInfo, err := os.Stat(fullPath)
+							if err != nil {
+								continue
+							}
+							if fileInfo.Size() == 0 {
+								continue // Skip empty files
+							}
+
+							exactMatches = append(exactMatches, fullPath)
+						}
+					}
+					break // Found the folder, no need to continue
+				}
+			}
+		} else {
+			// File mode: original behavior - match files by prefix
+			for _, file := range submissionEntries {
+				if file.IsDir() {
+					continue
+				}
+
+				fullPath := filepath.Join(submissionsDir, file.Name())
+				fileInfo, err := os.Stat(fullPath)
+				if err != nil {
+					continue
+				}
+				if fileInfo.Size() == 0 {
+					continue
+				}
+
+				// Check if filename starts with the email prefix (with dashes)
+				// e.g., "firstname-lastname.pdf" matches "firstname-lastname"
+				fileNameLower := strings.ToLower(file.Name())
+				if strings.HasPrefix(fileNameLower, strings.ToLower(emailPrefix+".")) ||
+				   strings.HasPrefix(fileNameLower, strings.ToLower(emailPrefix+"-")) {
+					exactMatches = append(exactMatches, fullPath)
+				}
 			}
 		}
 	}
