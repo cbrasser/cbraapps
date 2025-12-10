@@ -1,0 +1,68 @@
+# cbrawatch configuration file
+# Default location: ~/.config/cbraapps/cbrawatch.toml
+
+# Paths to scan for git repositories
+[[paths]]
+path = "~/Code"
+scan_depth = -1  # -1 = use global max_depth, 0 = exact path only, N = scan N levels deep
+
+[[paths]]
+path = "~/Projects"
+scan_depth = 2
+
+[[paths]]
+path = "~/Documents/work"
+scan_depth = 1
+
+# ===== CUSTOM NAMES =====
+# Custom names only work when the path itself is a git repository
+# Use scan_depth = 0 for specific repos you want to name
+
+# Example: If ~/Code/my-important-project/.git exists
+[[paths]]
+path = "~/Code/my-important-project"
+name = "Main Project"  # Optional: Custom display name in the list
+scan_depth = 0  # REQUIRED: Must be 0 for custom name to apply
+
+[[paths]]
+path = "~/Work/client-site"
+name = "🚀 Client Website"  # You can even use emojis!
+scan_depth = 0  # REQUIRED: Must be 0 for custom name to apply
+
+# ===== IMPORTANT =====
+# If you have a directory with MULTIPLE git repos inside:
+# - Set scan_depth > 0 to find all repos
+# - Custom name will NOT apply to subdirectories
+# - Example: ~/Code/projects/ contains repo1/, repo2/, repo3/
+[[paths]]
+path = "~/Code/projects"
+scan_depth = 2  # Finds repo1, repo2, repo3
+# name = "..."  # This would NOT work - subdirectories have different paths
+
+# If you want to name each subdirectory repo, add them individually:
+[[paths]]
+path = "~/Code/projects/repo1"
+name = "Project One"
+scan_depth = 0
+
+[[paths]]
+path = "~/Code/projects/repo2"
+name = "Project Two"
+scan_depth = 0
+
+# Global maximum scanning depth
+# This is used when scan_depth is set to -1 in path config
+max_depth = 2
+
+# Show hidden directories when scanning (directories starting with .)
+# Note: .git directories are always skipped
+show_hidden = false
+
+# Default commit message for quick push (lowercase 'p' key)
+# This message is used when you want to quickly commit and push without typing a message
+default_commit_message = "Quick update"
+
+# Auto-refresh interval in seconds
+# Set to 0 to disable auto-refresh (manual refresh only with 'r' key)
+# Set to a positive number to automatically refresh repository status
+refresh_interval_seconds = 0
