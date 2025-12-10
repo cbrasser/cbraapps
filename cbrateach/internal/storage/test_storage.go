@@ -336,7 +336,7 @@ func (s *Storage) ExportFeedbackFiles(test *models.Test, course models.Course, o
 		content = strings.Replace(content, "Name:", fmt.Sprintf("Name: %s", studentScore.StudentName), 1)
 		content = strings.Replace(content, "Maximale Punkte:", fmt.Sprintf("Maximale Punkte: %.1f", maxPoints), 1)
 		content = strings.Replace(content, "Erreichte Punkte:", fmt.Sprintf("Erreichte Punkte: %.1f", studentScore.TotalPoints), 1)
-		content = strings.Replace(content, "Note:", fmt.Sprintf("Note: %.1f", studentScore.Grade), 1)
+		content = strings.Replace(content, "Note:", fmt.Sprintf("Note: %.2f", studentScore.Grade), 1)
 
 		// Replace task feedback (A1, A2, etc.)
 		for i, question := range test.Questions {
