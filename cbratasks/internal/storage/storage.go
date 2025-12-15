@@ -460,6 +460,33 @@ func (s *Storage) ToggleCompleteWithSync(id string) error {
 	return nil
 }
 
+// UpdateTaskWithSync updates a task and syncs to CalDAV if needed
+func (s *Storage) UpdateTaskWithSync(t *task.Task) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	t.UpdatedAt = time.Now()
+
+	for i, existing := range s.tasks {
+		if existing.ID == t.ID {
+			s.tasks[i] = t
+			if err := s.save(); err != nil {
+				return err
+			}
+
+			// Sync to CalDAV
+			if t.ListName == "radicale" && s.caldav != nil {
+				if err := s.caldav.UpdateTask(t); err != nil {
+					return fmt.Errorf("failed to sync task: %w", err)
+				}
+			}
+
+			return nil
+		}
+	}
+	return nil
+}
+
 // DeleteTaskWithSync deletes a task and removes from CalDAV
 func (s *Storage) DeleteTaskWithSync(id string) error {
 	s.mu.Lock()

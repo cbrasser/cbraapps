@@ -16,6 +16,7 @@ import (
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -25,6 +26,7 @@ const (
 	viewList viewState = iota
 	viewSearch
 	viewAddTask
+	viewEditTask
 	viewEditNote
 	viewViewNote
 	viewFocus
@@ -97,6 +99,7 @@ type listKeyMap struct {
 	Toggle      key.Binding
 	Delete      key.Binding
 	AddTask     key.Binding
+	EditTask    key.Binding
 	Search      key.Binding
 	EditNote    key.Binding
 	ViewNote    key.Binding
@@ -117,7 +120,7 @@ func (k listKeyMap) ShortHelp() []key.Binding {
 // FullHelp returns keybindings for the expanded help view.
 func (k listKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.Toggle, k.AddTask, k.Search, k.Focus},
+		{k.Toggle, k.AddTask, k.EditTask, k.Search, k.Focus},
 		{k.Archive, k.ArchiveAll, k.ViewArchive, k.Sync},
 		{k.EditNote, k.ViewNote, k.Delete, k.Quit},
 	}
@@ -135,6 +138,10 @@ var listKeys = listKeyMap{
 	AddTask: key.NewBinding(
 		key.WithKeys("a"),
 		key.WithHelp("a", "add task"),
+	),
+	EditTask: key.NewBinding(
+		key.WithKeys("e"),
+		key.WithHelp("e", "edit task"),
 	),
 	Search: key.NewBinding(
 		key.WithKeys("/"),
@@ -262,6 +269,7 @@ type Model struct {
 	searchInput textinput.Model
 	addInput    textinput.Model
 	noteArea    textarea.Model
+	editForm    *huh.Form
 	editingTask *task.Task
 	viewingTask *task.Task
 	spinner     spinner.Model
@@ -455,6 +463,41 @@ func (m *Model) enterArchiveMode() {
 	m.archiveList.SetSize(m.width, m.height-4)
 }
 
+// initEditForm initializes the edit form for a task
+func (m *Model) initEditForm(t *task.Task) {
+	// Prepare initial values
+	editTitle := t.Title
+	editTags := strings.Join(t.Tags, ", ")
+	editDueDate := ""
+	if t.DueDate != nil {
+		editDueDate = t.DueDate.Format("2006-01-02")
+	}
+
+	// Create the form
+	m.editForm = huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().
+				Title("Task Title").
+				Value(&editTitle).
+				Key("title"),
+
+			huh.NewInput().
+				Title("Tags (comma-separated)").
+				Value(&editTags).
+				Placeholder("work, important").
+				Key("tags"),
+
+			huh.NewInput().
+				Title("Due Date").
+				Value(&editDueDate).
+				Placeholder("YYYY-MM-DD, today, tomorrow, +1d, +1w").
+				Key("duedate"),
+		),
+	)
+
+	m.editingTask = t
+}
+
 func (m Model) doInitialSync() tea.Cmd {
 	return func() tea.Msg {
 		err := m.storage.Sync()
@@ -464,6 +507,100 @@ func (m Model) doInitialSync() tea.Cmd {
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
+
+	// Handle edit form updates first if we're in edit mode
+	if m.view == viewEditTask && m.editForm != nil {
+		// Check for ESC to cancel before updating form
+		if keyMsg, ok := msg.(tea.KeyMsg); ok && keyMsg.String() == "esc" {
+			m.view = viewList
+			m.editForm = nil
+			m.editingTask = nil
+			return m, nil
+		}
+
+		form, cmd := m.editForm.Update(msg)
+		if f, ok := form.(*huh.Form); ok {
+			m.editForm = f
+		}
+
+		// Check if form is complete
+		if m.editForm.State == huh.StateCompleted {
+			// Update task using the model field values
+			if m.editingTask != nil {
+				// Get values from form using Get methods
+				newTitle := m.editForm.GetString("title")
+				newTags := m.editForm.GetString("tags")
+				newDueDate := m.editForm.GetString("duedate")
+
+				// Get the task from storage to ensure we have the latest version
+				taskToUpdate := m.storage.GetTask(m.editingTask.ID)
+				if taskToUpdate == nil {
+					m.statusMsg = "Error: task not found"
+					m.view = viewList
+					m.editForm = nil
+					m.editingTask = nil
+					return m, cmd
+				}
+
+				// Update the title
+				taskToUpdate.Title = strings.TrimSpace(newTitle)
+
+				// Parse and set tags
+				taskToUpdate.Tags = []string{}
+				if strings.TrimSpace(newTags) != "" {
+					tagParts := strings.Split(newTags, ",")
+					for _, tag := range tagParts {
+						tag = strings.TrimSpace(tag)
+						if tag != "" {
+							taskToUpdate.Tags = append(taskToUpdate.Tags, strings.ToLower(tag))
+						}
+					}
+				}
+
+				// Parse and set due date
+				dueDateTrimmed := strings.TrimSpace(newDueDate)
+				if dueDateTrimmed != "" {
+					if due, err := task.ParseDueDate(dueDateTrimmed); err == nil {
+						taskToUpdate.DueDate = due
+					} else {
+						m.statusMsg = fmt.Sprintf("Invalid due date: %v", err)
+						m.view = viewList
+						m.editForm = nil
+						m.editingTask = nil
+						return m, cmd
+					}
+				} else {
+					// Clear due date if empty
+					taskToUpdate.DueDate = nil
+				}
+
+				// Save the task
+				var err error
+				if taskToUpdate.ListName == "radicale" && m.storage.IsSyncEnabled() {
+					err = m.storage.UpdateTaskWithSync(taskToUpdate)
+				} else {
+					err = m.storage.UpdateTask(taskToUpdate)
+				}
+
+				if err != nil {
+					m.statusMsg = fmt.Sprintf("Failed to update: %v", err)
+				} else {
+					m.statusMsg = fmt.Sprintf("✓ Updated: %s", taskToUpdate.Title)
+				}
+
+				// Reload tasks from storage
+				m.tasks = m.storage.GetTasks()
+			}
+
+			// Return to list view and clear form state
+			m.view = viewList
+			m.editForm = nil
+			m.editingTask = nil
+			return m, cmd
+		}
+
+		return m, cmd
+	}
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -622,6 +759,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.addInput.SetValue("")
 			m.addInput.Focus()
 			return m, textinput.Blink
+
+		case "e":
+			if len(m.tasks) > 0 && m.cursor < len(m.tasks) {
+				t := m.tasks[m.cursor]
+				m.initEditForm(t)
+				m.view = viewEditTask
+				return m, m.editForm.Init()
+			}
 
 		case "s":
 			// Manual sync
@@ -973,6 +1118,14 @@ func (m Model) View() string {
 	if m.view == viewAddTask {
 		b.WriteString(inputStyle.Render("➕ " + m.addInput.View()) + "\n")
 		b.WriteString(helpStyle.Render("  +tag for tags, +1d/+1w/tomorrow for due") + "\n\n")
+	}
+
+	// Edit task form (if active)
+	if m.view == viewEditTask && m.editForm != nil {
+		b.WriteString(titleStyle.Render("✏️  Edit Task") + "\n\n")
+		b.WriteString(m.editForm.View() + "\n")
+		b.WriteString(helpStyle.Render("  esc: cancel") + "\n\n")
+		return b.String()
 	}
 
 	// Note editor (if active)
