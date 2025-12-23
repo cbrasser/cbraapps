@@ -13,15 +13,18 @@ import (
 	"cbratasks/internal/caldav"
 	"cbratasks/internal/config"
 	"cbratasks/internal/task"
+
+	"cbratasks/internal/github"
 )
 
 type Storage struct {
-	tasks      []*task.Task
-	archived   []*task.Task
-	dataDir    string
-	mu         sync.RWMutex
-	caldav     *caldav.Client
-	cfg        *config.Config
+	tasks    []*task.Task
+	issues   []*github.Issue
+	archived []*task.Task
+	dataDir  string
+	mu       sync.RWMutex
+	caldav   *caldav.Client
+	cfg      *config.Config
 }
 
 func New() (*Storage, error) {
@@ -35,7 +38,7 @@ func New() (*Storage, error) {
 
 func NewWithConfig(cfg *config.Config) (*Storage, error) {
 	dataDir := config.DataDir()
-	if err := os.MkdirAll(dataDir, 0755); err != nil {
+	if err := os.MkdirAll(dataDir, 0o755); err != nil {
 		return nil, err
 	}
 
@@ -94,7 +97,7 @@ func (s *Storage) save() error {
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(s.tasksFile(), data, 0644); err != nil {
+	if err := os.WriteFile(s.tasksFile(), data, 0o644); err != nil {
 		return err
 	}
 
@@ -103,7 +106,7 @@ func (s *Storage) save() error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(s.archiveFile(), archiveData, 0644)
+	return os.WriteFile(s.archiveFile(), archiveData, 0o644)
 }
 
 // archiveOldTasks moves completed tasks older than 24h to archive
@@ -561,3 +564,15 @@ func (s *Storage) ArchiveAllCompletedTasks() (int, error) {
 	return count, nil
 }
 
+func (s *Storage) LoadIssues() error {
+	issues, err := github.FetchIssues()
+	if err != nil {
+		return err
+	}
+	s.issues = issues
+	return s.save()
+}
+
+func (s *Storage) GetIssues() []*github.Issue {
+	return s.issues
+}

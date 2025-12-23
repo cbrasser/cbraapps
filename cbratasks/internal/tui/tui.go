@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"cbratasks/internal/config"
+	"cbratasks/internal/github"
 	"cbratasks/internal/storage"
 	"cbratasks/internal/task"
 
@@ -31,6 +32,7 @@ const (
 	viewViewNote
 	viewFocus
 	viewArchive
+	viewIssues
 )
 
 // Messages
@@ -39,6 +41,10 @@ type syncDoneMsg struct {
 }
 
 type initialSyncDoneMsg struct {
+	err error
+}
+
+type issuesLoadedMsg struct {
 	err error
 }
 
@@ -193,6 +199,12 @@ type archiveKeyMap struct {
 	Help        key.Binding
 }
 
+type issueKeyMap struct {
+	ViewIssues key.Binding
+	Quit       key.Binding
+	Help       key.Binding
+}
+
 // ShortHelp returns keybindings to be shown in the mini help view.
 func (k archiveKeyMap) ShortHelp() []key.Binding {
 	return []key.Binding{k.Quit, k.Help}
@@ -224,6 +236,32 @@ var archiveKeys = archiveKeyMap{
 	),
 }
 
+var issueKeys = issueKeyMap{
+	ViewIssues: key.NewBinding(
+		key.WithKeys("i"),
+		key.WithHelp("A", "back to tasks"),
+	),
+	Quit: key.NewBinding(
+		key.WithKeys("q", "ctrl+c"),
+		key.WithHelp("q", "quit"),
+	),
+	Help: key.NewBinding(
+		key.WithKeys("?"),
+		key.WithHelp("?", "more"),
+	),
+}
+
+func (k issueKeyMap) ShortHelp() []key.Binding {
+	return []key.Binding{k.Quit, k.Help}
+}
+
+// FullHelp returns keybindings for the expanded help view.
+func (k issueKeyMap) FullHelp() [][]key.Binding {
+	return [][]key.Binding{
+		{k.ViewIssues, k.Quit},
+	}
+}
+
 // focusItem implements list.Item for the focus mode list
 type focusItem struct {
 	task *task.Task
@@ -247,6 +285,12 @@ type archiveItem struct {
 	task *task.Task
 }
 
+type issueItem struct {
+	issue *github.Issue
+}
+
+func (i issueItem) FilterValue() string { return i.issue.Title }
+
 func (i archiveItem) FilterValue() string { return i.task.Title }
 func (i archiveItem) Title() string       { return i.task.Title }
 func (i archiveItem) Description() string {
@@ -261,28 +305,32 @@ func (i archiveItem) Description() string {
 }
 
 type Model struct {
-	config      *config.Config
-	storage     *storage.Storage
-	tasks       []*task.Task
-	cursor      int
-	view        viewState
-	searchInput textinput.Model
-	addInput    textinput.Model
-	noteArea    textarea.Model
-	editForm    *huh.Form
-	editingTask *task.Task
-	viewingTask *task.Task
-	spinner     spinner.Model
-	syncing     bool
-	width       int
-	height      int
-	statusMsg   string
-	quitting    bool
-	showArchive bool
-	focusList   list.Model
-	focusHelp   help.Model
-	listHelp    help.Model
-	archiveList list.Model
+	config        *config.Config
+	storage       *storage.Storage
+	tasks         []*task.Task
+	issues        []*github.Issue
+	cursor        int
+	view          viewState
+	searchInput   textinput.Model
+	addInput      textinput.Model
+	noteArea      textarea.Model
+	editForm      *huh.Form
+	editingTask   *task.Task
+	viewingTask   *task.Task
+	spinner       spinner.Model
+	syncing       bool
+	loadingIssues bool
+	width         int
+	height        int
+	statusMsg     string
+	quitting      bool
+	showArchive   bool
+	showIssues    bool
+	focusList     list.Model
+	focusHelp     help.Model
+	listHelp      help.Model
+	archiveList   list.Model
+	issueList     list.Model
 }
 
 // Styles
@@ -431,8 +479,8 @@ func (m Model) getFocusTasks() []*task.Task {
 		due := *t.DueDate
 		// Check if overdue, due today, or due tomorrow
 		if due.Before(now) ||
-		   (due.Year() == now.Year() && due.YearDay() == now.YearDay()) ||
-		   (due.Year() == tomorrow.Year() && due.YearDay() == tomorrow.YearDay()) {
+			(due.Year() == now.Year() && due.YearDay() == now.YearDay()) ||
+			(due.Year() == tomorrow.Year() && due.YearDay() == tomorrow.YearDay()) {
 			focusTasks = append(focusTasks, t)
 		}
 	}
@@ -461,6 +509,17 @@ func (m *Model) enterArchiveMode() {
 	}
 	m.archiveList.SetItems(items)
 	m.archiveList.SetSize(m.width, m.height-4)
+}
+
+func (m *Model) enterIssueMode() {
+	issues := m.storage.GetIssues()
+	fmt.Println("Issues: ", issues)
+	items := make([]list.Item, len(issues))
+	for index, issue := range issues {
+		items[index] = issueItem{issue: issue}
+	}
+	m.issueList.SetItems(items)
+	m.issueList.SetSize(m.width, m.height-4)
 }
 
 // initEditForm initializes the edit form for a task
@@ -502,6 +561,13 @@ func (m Model) doInitialSync() tea.Cmd {
 	return func() tea.Msg {
 		err := m.storage.Sync()
 		return initialSyncDoneMsg{err: err}
+	}
+}
+
+func (m Model) loadIssues() tea.Cmd {
+	return func() tea.Msg {
+		err := m.storage.LoadIssues()
+		return issuesLoadedMsg{err: err}
 	}
 }
 
@@ -634,6 +700,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.tasks = m.storage.GetTasks()
 			m.statusMsg = "✓ Synced from server"
+		}
+	case issuesLoadedMsg:
+		m.loadingIssues = false
+		if msg.err != nil {
+			m.statusMsg = fmt.Sprintf("Loading Issues failed: %v", msg.err)
+		} else {
+			m.issues = m.storage.GetIssues()
+			m.statusMsg = "Loaded Issues"
 		}
 
 	case startSyncMsg:
@@ -815,6 +889,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.enterArchiveMode()
 				m.view = viewArchive
 				m.statusMsg = "Viewing archive"
+			} else {
+				m.tasks = m.storage.GetTasks()
+				m.statusMsg = "Viewing active tasks"
+			}
+			m.cursor = 0
+			return m, nil
+		case "i":
+			// Toggle archive view
+			m.showIssues = !m.showIssues
+			if m.showIssues {
+				m.enterIssueMode()
+				m.view = viewIssues
+				m.statusMsg = "Viewing issues"
 			} else {
 				m.tasks = m.storage.GetTasks()
 				m.statusMsg = "Viewing active tasks"
@@ -1102,6 +1189,16 @@ func (m Model) View() string {
 		return b.String()
 	}
 
+	// Issue View
+	if m.view == viewIssues {
+		b.WriteString(m.issueList.View() + "\n")
+		if m.statusMsg != "" {
+			b.WriteString(statusStyle.Render(m.statusMsg) + "\n")
+		}
+		b.WriteString(m.listHelp.View(issueKeys))
+		return b.String()
+	}
+
 	// Title
 	title := "📋 Tasks"
 	if m.showArchive {
@@ -1111,12 +1208,12 @@ func (m Model) View() string {
 
 	// Search bar (if active)
 	if m.view == viewSearch {
-		b.WriteString(inputStyle.Render("🔍 " + m.searchInput.View()) + "\n\n")
+		b.WriteString(inputStyle.Render("🔍 "+m.searchInput.View()) + "\n\n")
 	}
 
 	// Add task form (if active)
 	if m.view == viewAddTask {
-		b.WriteString(inputStyle.Render("➕ " + m.addInput.View()) + "\n")
+		b.WriteString(inputStyle.Render("➕ "+m.addInput.View()) + "\n")
 		b.WriteString(helpStyle.Render("  +tag for tags, +1d/+1w/tomorrow for due") + "\n\n")
 	}
 
@@ -1130,7 +1227,7 @@ func (m Model) View() string {
 
 	// Note editor (if active)
 	if m.view == viewEditNote && m.editingTask != nil {
-		b.WriteString(titleStyle.Render("📝 Note for: " + m.editingTask.Title) + "\n")
+		b.WriteString(titleStyle.Render("📝 Note for: "+m.editingTask.Title) + "\n")
 		b.WriteString(noteBoxStyle.Render(m.noteArea.View()) + "\n")
 		b.WriteString(helpStyle.Render("  esc: save & close • ctrl+s: save") + "\n\n")
 		return b.String()
@@ -1138,7 +1235,7 @@ func (m Model) View() string {
 
 	// Note viewer (if active)
 	if m.view == viewViewNote && m.viewingTask != nil {
-		b.WriteString(titleStyle.Render("📝 Note for: " + m.viewingTask.Title) + "\n")
+		b.WriteString(titleStyle.Render("📝 Note for: "+m.viewingTask.Title) + "\n")
 		b.WriteString(noteBoxStyle.Render(m.viewingTask.Note) + "\n")
 		b.WriteString(helpStyle.Render(fmt.Sprintf("  esc/tab: close • %s: edit", m.config.Hotkeys.EditNote)) + "\n\n")
 		return b.String()

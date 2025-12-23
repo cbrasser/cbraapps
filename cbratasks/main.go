@@ -1,20 +1,21 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"strings"
-
 	"cbratasks/internal/config"
+	"cbratasks/internal/github"
 	"cbratasks/internal/storage"
 	"cbratasks/internal/task"
 	"cbratasks/internal/tui"
+	"fmt"
+	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
 
 func main() {
-	var rootCmd = &cobra.Command{
+	github.FetchIssues()
+	rootCmd := &cobra.Command{
 		Use:   "cbratasks",
 		Short: "A simple task management app",
 		Long:  "cbratasks is a minimal task manager with local storage and optional CalDAV sync.",
@@ -27,7 +28,7 @@ func main() {
 	var listFlag string
 	var noteFlag string
 
-	var addCmd = &cobra.Command{
+	addCmd := &cobra.Command{
 		Use:   "add [task title]",
 		Short: "Add a new task",
 		Long: `Add a new task with optional flags.
@@ -49,13 +50,13 @@ Examples:
 	addCmd.Flags().StringVarP(&listFlag, "list", "l", "", "Task list (local or radicale)")
 	addCmd.Flags().StringVarP(&noteFlag, "note", "n", "", "Attach a note to the task")
 
-	var listCmd = &cobra.Command{
+	listCmd := &cobra.Command{
 		Use:   "list",
 		Short: "List all tasks",
 		RunE:  runList,
 	}
 
-	var todayCmd = &cobra.Command{
+	todayCmd := &cobra.Command{
 		Use:   "today",
 		Short: "List tasks due today",
 		Long: `List all incomplete tasks that are due today.
@@ -67,13 +68,13 @@ Output format (one task per line):
 		RunE: runToday,
 	}
 
-	var archiveCmd = &cobra.Command{
+	archiveCmd := &cobra.Command{
 		Use:   "archive",
 		Short: "Show archived tasks",
 		RunE:  runArchive,
 	}
 
-	var syncCmd = &cobra.Command{
+	syncCmd := &cobra.Command{
 		Use:   "sync",
 		Short: "Sync tasks with CalDAV server (Radicale)",
 		Long: `Synchronize tasks with a CalDAV server like Radicale.
