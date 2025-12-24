@@ -565,6 +565,10 @@ func (s *Storage) ArchiveAllCompletedTasks() (int, error) {
 }
 
 func (s *Storage) LoadIssues() error {
+	fmt.Println("Loading Issues")
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	issues, err := github.FetchIssues()
 	if err != nil {
 		return err
@@ -574,5 +578,7 @@ func (s *Storage) LoadIssues() error {
 }
 
 func (s *Storage) GetIssues() []*github.Issue {
-	return s.issues
+	issues := make([]*github.Issue, len(s.issues))
+	copy(issues, s.issues)
+	return issues
 }

@@ -1,3 +1,7 @@
+/*
+Package tui
+*/
+
 package tui
 
 import (
@@ -48,7 +52,10 @@ type issuesLoadedMsg struct {
 	err error
 }
 
-type startSyncMsg struct{}
+type (
+	startSyncMsg      struct{}
+	loadIssuesMessage struct{}
+)
 
 // focusKeyMap defines keybindings for focus mode
 type focusKeyMap struct {
@@ -290,6 +297,8 @@ type issueItem struct {
 }
 
 func (i issueItem) FilterValue() string { return i.issue.Title }
+func (i issueItem) Title() string       { return i.issue.Title }
+func (i issueItem) Description() string { return i.issue.Repo }
 
 func (i archiveItem) FilterValue() string { return i.task.Title }
 func (i archiveItem) Title() string       { return i.task.Title }
@@ -429,6 +438,13 @@ func NewModel(cfg *config.Config, store *storage.Storage) Model {
 	al.SetFilteringEnabled(true)
 	al.Styles.Title = titleStyle
 
+	// Issue List
+	il := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
+	il.Title = "Issues"
+	il.SetShowStatusBar(false)
+	il.SetFilteringEnabled(true)
+	il.Styles.Title = titleStyle
+
 	// Focus help
 	fh := help.New()
 	fh.ShowAll = false
@@ -449,6 +465,7 @@ func NewModel(cfg *config.Config, store *storage.Storage) Model {
 		focusHelp:   fh,
 		listHelp:    lh,
 		archiveList: al,
+		issueList:   il,
 	}
 }
 
@@ -513,7 +530,6 @@ func (m *Model) enterArchiveMode() {
 
 func (m *Model) enterIssueMode() {
 	issues := m.storage.GetIssues()
-	fmt.Println("Issues: ", issues)
 	items := make([]list.Item, len(issues))
 	for index, issue := range issues {
 		items[index] = issueItem{issue: issue}
@@ -676,6 +692,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.noteArea.SetHeight(min(10, m.height-15))
 		m.focusList.SetSize(m.width, m.height-4)
 		m.archiveList.SetSize(m.width, m.height-4)
+		m.issueList.SetSize(m.width, m.height-4)
 
 	case spinner.TickMsg:
 		if m.syncing {
@@ -713,8 +730,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case startSyncMsg:
 		m.syncing = true
 		m.statusMsg = ""
-		return m, tea.Batch(m.spinner.Tick, m.doInitialSync())
-
+		return m, tea.Batch(m.spinner.Tick, m.doInitialSync(), m.loadIssues())
+	case loadIssuesMessage:
+		m.loadingIssues = true
+		m.statusMsg = ""
+		return m, tea.Batch(m.spinner.Tick, m.loadIssues())
 	case tea.KeyMsg:
 		key := msg.String()
 
@@ -1093,6 +1113,21 @@ func (m Model) handleFocusMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+func (m Model) handleIssueMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch {
+	case key.Matches(msg, issueKeys.ViewIssues):
+		m.showIssues = false
+		m.view = viewList
+		m.tasks = m.storage.GetTasks()
+		m.statusMsg = "Viewing active tasks"
+		return m, nil
+	default:
+		var cmd tea.Cmd
+		m.issueList, cmd = m.issueList.Update(msg)
+		return m, cmd
+	}
 }
 
 func (m Model) handleArchiveMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {

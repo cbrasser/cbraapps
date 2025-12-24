@@ -11,11 +11,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type Issue struct {
-	Repo  string
-	Title string
-}
-
 type Task struct {
 	ID          string     `json:"id"`
 	Title       string     `json:"title"`

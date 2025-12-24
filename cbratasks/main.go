@@ -1,20 +1,19 @@
 package main
 
 import (
-	"cbratasks/internal/config"
-	"cbratasks/internal/github"
-	"cbratasks/internal/storage"
-	"cbratasks/internal/task"
-	"cbratasks/internal/tui"
 	"fmt"
 	"os"
 	"strings"
+
+	"cbratasks/internal/config"
+	"cbratasks/internal/storage"
+	"cbratasks/internal/task"
+	"cbratasks/internal/tui"
 
 	"github.com/spf13/cobra"
 )
 
 func main() {
-	github.FetchIssues()
 	rootCmd := &cobra.Command{
 		Use:   "cbratasks",
 		Short: "A simple task management app",
