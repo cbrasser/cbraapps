@@ -37,6 +37,7 @@ const (
 	viewFocus
 	viewArchive
 	viewIssues
+	viewNewIssue
 )
 
 // Messages
@@ -208,6 +209,8 @@ type archiveKeyMap struct {
 
 type issueKeyMap struct {
 	ViewIssues key.Binding
+	Filter     key.Binding
+	NewIssue   key.Binding
 	Quit       key.Binding
 	Help       key.Binding
 }
@@ -246,7 +249,15 @@ var archiveKeys = archiveKeyMap{
 var issueKeys = issueKeyMap{
 	ViewIssues: key.NewBinding(
 		key.WithKeys("i"),
-		key.WithHelp("A", "back to tasks"),
+		key.WithHelp("i", "back to tasks"),
+	),
+	Filter: key.NewBinding(
+		key.WithKeys("f"),
+		key.WithHelp("f", "toggle filter"),
+	),
+	NewIssue: key.NewBinding(
+		key.WithKeys("n"),
+		key.WithHelp("n", "new issue"),
 	),
 	Quit: key.NewBinding(
 		key.WithKeys("q", "ctrl+c"),
@@ -265,7 +276,7 @@ func (k issueKeyMap) ShortHelp() []key.Binding {
 // FullHelp returns keybindings for the expanded help view.
 func (k issueKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.ViewIssues, k.Quit},
+		{k.ViewIssues, k.Filter, k.NewIssue, k.Quit},
 	}
 }
 
@@ -297,8 +308,20 @@ type issueItem struct {
 }
 
 func (i issueItem) FilterValue() string { return i.issue.Title }
-func (i issueItem) Title() string       { return i.issue.Title }
-func (i issueItem) Description() string { return i.issue.Repo }
+func (i issueItem) Title() string {
+	state := "✓"
+	if i.issue.State == "open" {
+		state = "○"
+	}
+	return fmt.Sprintf("%s #%d %s", state, i.issue.Number, i.issue.Title)
+}
+func (i issueItem) Description() string {
+	desc := i.issue.Repo
+	if i.issue.Assignee != "" {
+		desc += " • @" + i.issue.Assignee
+	}
+	return desc
+}
 
 func (i archiveItem) FilterValue() string { return i.task.Title }
 func (i archiveItem) Title() string       { return i.task.Title }
@@ -313,6 +336,15 @@ func (i archiveItem) Description() string {
 	return strings.Join(parts, " • ")
 }
 
+type issueFilter int
+
+const (
+	filterAll issueFilter = iota
+	filterMyOpen
+	filterOpen
+	filterMy
+)
+
 type Model struct {
 	config        *config.Config
 	storage       *storage.Storage
@@ -324,6 +356,7 @@ type Model struct {
 	addInput      textinput.Model
 	noteArea      textarea.Model
 	editForm      *huh.Form
+	newIssueForm  *huh.Form
 	editingTask   *task.Task
 	viewingTask   *task.Task
 	spinner       spinner.Model
@@ -335,6 +368,7 @@ type Model struct {
 	quitting      bool
 	showArchive   bool
 	showIssues    bool
+	issueFilter   issueFilter
 	focusList     list.Model
 	focusHelp     help.Model
 	listHelp      help.Model
@@ -529,13 +563,100 @@ func (m *Model) enterArchiveMode() {
 }
 
 func (m *Model) enterIssueMode() {
-	issues := m.storage.GetIssues()
+	var issues []*github.Issue
+
+	switch m.issueFilter {
+	case filterMyOpen:
+		issues = m.storage.GetMyOpenIssues()
+		m.issueList.Title = "Issues - My Open"
+	case filterOpen:
+		issues = m.storage.GetOpenIssues()
+		m.issueList.Title = "Issues - All Open"
+	case filterMy:
+		issues = m.storage.GetMyIssues()
+		m.issueList.Title = "Issues - Assigned to Me"
+	default:
+		issues = m.storage.GetIssues()
+		m.issueList.Title = "Issues - All"
+	}
+
 	items := make([]list.Item, len(issues))
 	for index, issue := range issues {
 		items[index] = issueItem{issue: issue}
 	}
 	m.issueList.SetItems(items)
 	m.issueList.SetSize(m.width, m.height-4)
+}
+
+// initNewIssueForm initializes the form for creating a new GitHub issue
+func (m *Model) initNewIssueForm() {
+	if len(m.config.GitHub.Repos) == 0 {
+		m.statusMsg = "No repos configured for creating issues"
+		return
+	}
+
+	// Default values
+	repo := m.config.GitHub.Repos[0]
+	title := ""
+	body := ""
+	assignToMe := false
+
+	// Create repo options
+	repoOptions := make([]huh.Option[string], len(m.config.GitHub.Repos))
+	for i, r := range m.config.GitHub.Repos {
+		repoOptions[i] = huh.NewOption(r, r)
+	}
+
+	// For simplicity, we'll use common labels - in a real implementation
+	// we could fetch these dynamically
+	labelOptions := []huh.Option[string]{
+		huh.NewOption("bug", "bug"),
+		huh.NewOption("enhancement", "enhancement"),
+		huh.NewOption("documentation", "documentation"),
+		huh.NewOption("question", "question"),
+		huh.NewOption("help wanted", "help wanted"),
+	}
+
+	selectedLabels := []string{}
+
+	m.newIssueForm = huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title("Repository").
+				Options(repoOptions...).
+				Value(&repo).
+				Key("repo"),
+
+			huh.NewInput().
+				Title("Issue Title").
+				Value(&title).
+				Key("title").
+				Validate(func(s string) error {
+					if strings.TrimSpace(s) == "" {
+						return fmt.Errorf("title cannot be empty")
+					}
+					return nil
+				}),
+
+			huh.NewText().
+				Title("Description").
+				Value(&body).
+				Key("body").
+				CharLimit(1000),
+
+			huh.NewMultiSelect[string]().
+				Title("Labels").
+				Options(labelOptions...).
+				Value(&selectedLabels).
+				Key("labels").
+				Limit(5),
+
+			huh.NewConfirm().
+				Title("Assign to me?").
+				Value(&assignToMe).
+				Key("assign"),
+		),
+	)
 }
 
 // initEditForm initializes the edit form for a task
@@ -589,6 +710,66 @@ func (m Model) loadIssues() tea.Cmd {
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
+
+	// Handle new issue form updates if we're in new issue mode
+	if m.view == viewNewIssue && m.newIssueForm != nil {
+		// Check for ESC to cancel before updating form
+		if keyMsg, ok := msg.(tea.KeyMsg); ok && keyMsg.String() == "esc" {
+			m.view = viewIssues
+			m.newIssueForm = nil
+			return m, nil
+		}
+
+		form, cmd := m.newIssueForm.Update(msg)
+		if f, ok := form.(*huh.Form); ok {
+			m.newIssueForm = f
+		}
+
+		// Check if form is complete
+		if m.newIssueForm.State == huh.StateCompleted {
+			// Get values from form
+			repo := m.newIssueForm.GetString("repo")
+			title := m.newIssueForm.GetString("title")
+			body := m.newIssueForm.GetString("body")
+			assignToMe := m.newIssueForm.GetBool("assign")
+
+			var assignees []string
+			if assignToMe {
+				assignees = append(assignees, m.config.GitHub.Username)
+			}
+
+			// Get selected labels - this is a bit tricky with huh forms
+			// For now we'll leave labels empty and can enhance later
+			labels := []string{}
+
+			// Create the issue
+			err := github.CreateIssue(
+				m.config.GitHub.Username,
+				m.config.GitHub.Token,
+				repo,
+				title,
+				body,
+				assignees,
+				labels,
+			)
+
+			if err != nil {
+				m.statusMsg = fmt.Sprintf("Failed to create issue: %v", err)
+			} else {
+				m.statusMsg = "✓ Issue created successfully!"
+				// Reload issues
+				m.loadingIssues = true
+				cmds = append(cmds, m.spinner.Tick, m.loadIssues())
+			}
+
+			// Return to issue view and clear form state
+			m.view = viewIssues
+			m.newIssueForm = nil
+			return m, tea.Batch(cmds...)
+		}
+
+		return m, cmd
+	}
 
 	// Handle edit form updates first if we're in edit mode
 	if m.view == viewEditTask && m.editForm != nil {
@@ -695,7 +876,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.issueList.SetSize(m.width, m.height-4)
 
 	case spinner.TickMsg:
-		if m.syncing {
+		if m.syncing || m.loadingIssues {
 			var cmd tea.Cmd
 			m.spinner, cmd = m.spinner.Update(msg)
 			cmds = append(cmds, cmd)
@@ -721,16 +902,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case issuesLoadedMsg:
 		m.loadingIssues = false
 		if msg.err != nil {
-			m.statusMsg = fmt.Sprintf("Loading Issues failed: %v", msg.err)
+			m.statusMsg = fmt.Sprintf("Failed to load issues: %v", msg.err)
+			m.showIssues = false
+			m.view = viewList
 		} else {
 			m.issues = m.storage.GetIssues()
-			m.statusMsg = "Loaded Issues"
+			m.statusMsg = ""
+			// Refresh issue list with loaded data
+			if m.showIssues && m.view == viewIssues {
+				m.enterIssueMode()
+			}
 		}
 
 	case startSyncMsg:
 		m.syncing = true
 		m.statusMsg = ""
-		return m, tea.Batch(m.spinner.Tick, m.doInitialSync(), m.loadIssues())
+		return m, tea.Batch(m.spinner.Tick, m.doInitialSync())
 	case loadIssuesMessage:
 		m.loadingIssues = true
 		m.statusMsg = ""
@@ -752,6 +939,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleFocusMode(msg)
 		case viewArchive:
 			return m.handleArchiveMode(msg)
+		case viewIssues:
+			return m.handleIssueMode(msg)
 		}
 
 		// List view keybindings
@@ -916,12 +1105,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.cursor = 0
 			return m, nil
 		case "i":
-			// Toggle archive view
+			// Toggle issue view
 			m.showIssues = !m.showIssues
 			if m.showIssues {
+				// Enter issue view immediately
 				m.enterIssueMode()
 				m.view = viewIssues
-				m.statusMsg = "Viewing issues"
+
+				// Check if issues have been loaded, if not, load them
+				if len(m.issues) == 0 && !m.loadingIssues {
+					m.loadingIssues = true
+					m.statusMsg = ""
+					return m, tea.Batch(m.spinner.Tick, m.loadIssues())
+				}
+				m.statusMsg = ""
 			} else {
 				m.tasks = m.storage.GetTasks()
 				m.statusMsg = "Viewing active tasks"
@@ -1123,6 +1320,29 @@ func (m Model) handleIssueMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.tasks = m.storage.GetTasks()
 		m.statusMsg = "Viewing active tasks"
 		return m, nil
+	case key.Matches(msg, issueKeys.Filter):
+		// Cycle through filters
+		m.issueFilter = (m.issueFilter + 1) % 4
+		m.enterIssueMode()
+		return m, nil
+	case key.Matches(msg, issueKeys.NewIssue):
+		// Open new issue form
+		if !m.config.GitHub.Enabled {
+			m.statusMsg = "GitHub integration not enabled"
+			return m, nil
+		}
+		m.initNewIssueForm()
+		if m.newIssueForm != nil {
+			m.view = viewNewIssue
+			return m, m.newIssueForm.Init()
+		}
+		return m, nil
+	case key.Matches(msg, issueKeys.Help):
+		m.listHelp.ShowAll = !m.listHelp.ShowAll
+		return m, nil
+	case key.Matches(msg, issueKeys.Quit):
+		m.quitting = true
+		return m, tea.Quit
 	default:
 		var cmd tea.Cmd
 		m.issueList, cmd = m.issueList.Update(msg)
@@ -1227,10 +1447,21 @@ func (m Model) View() string {
 	// Issue View
 	if m.view == viewIssues {
 		b.WriteString(m.issueList.View() + "\n")
+		if m.loadingIssues {
+			b.WriteString(m.spinner.View() + " Loading issues...\n")
+		}
 		if m.statusMsg != "" {
 			b.WriteString(statusStyle.Render(m.statusMsg) + "\n")
 		}
 		b.WriteString(m.listHelp.View(issueKeys))
+		return b.String()
+	}
+
+	// New Issue Form
+	if m.view == viewNewIssue && m.newIssueForm != nil {
+		b.WriteString(titleStyle.Render("📝 Create New Issue") + "\n\n")
+		b.WriteString(m.newIssueForm.View() + "\n")
+		b.WriteString(helpStyle.Render("  esc: cancel") + "\n\n")
 		return b.String()
 	}
 
@@ -1293,8 +1524,13 @@ func (m Model) View() string {
 		b.WriteString(m.spinner.View() + " Syncing...\n")
 	}
 
+	// Loading issues spinner
+	if m.loadingIssues {
+		b.WriteString(m.spinner.View() + " Loading issues...\n")
+	}
+
 	// Status message
-	if m.statusMsg != "" && !m.syncing {
+	if m.statusMsg != "" && !m.syncing && !m.loadingIssues {
 		b.WriteString(statusStyle.Render(m.statusMsg) + "\n")
 	}
 

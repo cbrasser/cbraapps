@@ -567,9 +567,17 @@ func (s *Storage) ArchiveAllCompletedTasks() (int, error) {
 func (s *Storage) LoadIssues() error {
 	fmt.Println("Loading Issues")
 
+	if !s.cfg.GitHub.Enabled {
+		return fmt.Errorf("GitHub integration not enabled in config")
+	}
+
+	if s.cfg.GitHub.Username == "" || s.cfg.GitHub.Token == "" {
+		return fmt.Errorf("GitHub username or token not configured")
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	issues, err := github.FetchIssues()
+	issues, err := github.FetchIssues(s.cfg.GitHub.Username, s.cfg.GitHub.Token)
 	if err != nil {
 		return err
 	}
@@ -581,4 +589,46 @@ func (s *Storage) GetIssues() []*github.Issue {
 	issues := make([]*github.Issue, len(s.issues))
 	copy(issues, s.issues)
 	return issues
+}
+
+// GetMyIssues returns issues assigned to the configured GitHub user
+func (s *Storage) GetMyIssues() []*github.Issue {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var myIssues []*github.Issue
+	for _, issue := range s.issues {
+		if issue.Assignee == s.cfg.GitHub.Username {
+			myIssues = append(myIssues, issue)
+		}
+	}
+	return myIssues
+}
+
+// GetOpenIssues returns all open issues
+func (s *Storage) GetOpenIssues() []*github.Issue {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var openIssues []*github.Issue
+	for _, issue := range s.issues {
+		if issue.State == "open" {
+			openIssues = append(openIssues, issue)
+		}
+	}
+	return openIssues
+}
+
+// GetMyOpenIssues returns open issues assigned to me
+func (s *Storage) GetMyOpenIssues() []*github.Issue {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var myOpenIssues []*github.Issue
+	for _, issue := range s.issues {
+		if issue.State == "open" && issue.Assignee == s.cfg.GitHub.Username {
+			myOpenIssues = append(myOpenIssues, issue)
+		}
+	}
+	return myOpenIssues
 }

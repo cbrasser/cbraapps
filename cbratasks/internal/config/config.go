@@ -11,6 +11,7 @@ import (
 type Config struct {
 	DefaultList string            `toml:"default_list"`
 	Sync        SyncConfig        `toml:"sync"`
+	GitHub      GitHubConfig      `toml:"github"`
 	Tags        map[string]string `toml:"tags"` // tag name -> color
 	Hotkeys     HotkeyConfig      `toml:"hotkeys"`
 }
@@ -20,6 +21,13 @@ type SyncConfig struct {
 	URL      string `toml:"url"`
 	Username string `toml:"username"`
 	Password string `toml:"password"`
+}
+
+type GitHubConfig struct {
+	Enabled  bool     `toml:"enabled"`
+	Username string   `toml:"username"`
+	Token    string   `toml:"token"`
+	Repos    []string `toml:"repos"` // List of repos for creating issues
 }
 
 type HotkeyConfig struct {
@@ -40,6 +48,12 @@ func DefaultConfig() Config {
 			URL:      "https://radicale.example.com",
 			Username: "",
 			Password: "",
+		},
+		GitHub: GitHubConfig{
+			Enabled:  false,
+			Username: "",
+			Token:    "",
+			Repos:    []string{},
 		},
 		Tags: map[string]string{
 			"work":     "#FF6B6B", // red
