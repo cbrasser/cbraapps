@@ -149,10 +149,24 @@ func loadCalendarsFromRadicale(config *RadicaleConfig) ([]CalDAVCalendar, error)
 	// Normalize server URL (remove trailing slash)
 	serverURL := strings.TrimSuffix(config.ServerURL, "/")
 
-	// Radicale typically uses /username/ as the user collection path
-	// Try username-based path first, then root as fallback
-	userPath := "/" + config.Username + "/"
-	pathsToTry := []string{userPath, "/"}
+	// Determine backend type - default to radicale if not specified
+	backend := config.Backend
+	if backend == "" {
+		backend = "radicale"
+	}
+
+	// Construct paths based on backend type
+	var pathsToTry []string
+	if backend == "nextcloud" {
+		// NextCloud uses /remote.php/dav/calendars/username/
+		userPath := "/remote.php/dav/calendars/" + config.Username + "/"
+		pathsToTry = []string{userPath}
+	} else {
+		// Radicale typically uses /username/ as the user collection path
+		// Try username-based path first, then root as fallback
+		userPath := "/" + config.Username + "/"
+		pathsToTry = []string{userPath, "/"}
+	}
 
 	var calendars []CalDAVCalendar
 	var lastErr error
@@ -160,6 +174,7 @@ func loadCalendarsFromRadicale(config *RadicaleConfig) ([]CalDAVCalendar, error)
 	for _, basePath := range pathsToTry {
 		// Discover calendars using PROPFIND
 		fullURL := serverURL + basePath
+
 		req, err := http.NewRequest("PROPFIND", fullURL, nil)
 		if err != nil {
 			lastErr = err
@@ -169,7 +184,7 @@ func loadCalendarsFromRadicale(config *RadicaleConfig) ([]CalDAVCalendar, error)
 		// Set authentication
 		auth := base64.StdEncoding.EncodeToString([]byte(config.Username + ":" + config.Password))
 		req.Header.Set("Authorization", "Basic "+auth)
-		req.Header.Set("Content-Type", "application/xml")
+		req.Header.Set("Content-Type", "application/xml; charset=utf-8")
 		req.Header.Set("Depth", "1")
 
 		// Create PROPFIND request body
@@ -204,7 +219,7 @@ func loadCalendarsFromRadicale(config *RadicaleConfig) ([]CalDAVCalendar, error)
 			if len(bodyStr) > 500 {
 				bodyStr = bodyStr[:500] + "..."
 			}
-			lastErr = fmt.Errorf("failed to discover calendars at %s (status %d): %s", fullURL, resp.StatusCode, bodyStr)
+			lastErr = fmt.Errorf("failed to discover calendars at %s (status %d, backend: %s): %s", fullURL, resp.StatusCode, backend, bodyStr)
 			continue
 		}
 
@@ -308,9 +323,9 @@ func loadCalendarsFromRadicale(config *RadicaleConfig) ([]CalDAVCalendar, error)
 
 	// If we got here, we didn't find any calendars
 	if lastErr != nil {
-		return nil, lastErr
+		return nil, fmt.Errorf("calendar discovery failed: %w", lastErr)
 	}
-	return nil, fmt.Errorf("no calendars found")
+	return nil, fmt.Errorf("no calendars found (tried %d paths)", len(pathsToTry))
 }
 
 // ErrNotACalendar is returned when the resource is not a calendar (e.g., contacts/addressbook)
@@ -320,14 +335,28 @@ var ErrNotACalendar = fmt.Errorf("resource is not a calendar")
 func loadICSFromRadicale(calendarURL string, calendarName string, color lipgloss.Color, config *RadicaleConfig) ([]Event, error) {
 	client := &http.Client{Timeout: 10 * time.Second}
 
+	// Determine backend type - default to radicale if not specified
+	backend := config.Backend
+	if backend == "" {
+		backend = "radicale"
+	}
+
 	// Radicale calendars can be accessed via .ics extension
-	// Try multiple URL formats
+	// NextCloud needs a different approach (REPORT request instead of GET)
 	baseURL := strings.TrimSuffix(calendarURL, "/")
-	urlsToTry := []string{
-		baseURL + ".ics",     // Standard Radicale format
-		calendarURL + ".ics", // With trailing slash
-		baseURL,              // Without .ics
-		calendarURL,          // Original URL
+	var urlsToTry []string
+
+	if backend == "nextcloud" {
+		// For NextCloud, we'll use a REPORT request to get all events
+		urlsToTry = []string{calendarURL}
+	} else {
+		// Radicale - try multiple URL formats
+		urlsToTry = []string{
+			baseURL + ".ics",     // Standard Radicale format
+			calendarURL + ".ics", // With trailing slash
+			baseURL,              // Without .ics
+			calendarURL,          // Original URL
+		}
 	}
 
 	var lastErr error
@@ -335,15 +364,42 @@ func loadICSFromRadicale(calendarURL string, calendarName string, color lipgloss
 	var lastBody string
 
 	for _, url := range urlsToTry {
-		req, err := http.NewRequest("GET", url, nil)
-		if err != nil {
-			lastErr = err
-			continue
+		var req *http.Request
+		var err error
+
+		if backend == "nextcloud" {
+			// NextCloud requires a REPORT request to get calendar events
+			reportBody := `<?xml version="1.0" encoding="UTF-8"?>
+<calendar-query xmlns="urn:ietf:params:xml:ns:caldav" xmlns:d="DAV:">
+  <d:prop>
+    <d:getetag/>
+    <calendar-data/>
+  </d:prop>
+  <filter>
+    <comp-filter name="VCALENDAR">
+      <comp-filter name="VEVENT"/>
+    </comp-filter>
+  </filter>
+</calendar-query>`
+			req, err = http.NewRequest("REPORT", url, bytes.NewBufferString(reportBody))
+			if err != nil {
+				lastErr = err
+				continue
+			}
+			req.Header.Set("Content-Type", "application/xml; charset=utf-8")
+			req.Header.Set("Depth", "1")
+		} else {
+			// Radicale uses simple GET
+			req, err = http.NewRequest("GET", url, nil)
+			if err != nil {
+				lastErr = err
+				continue
+			}
+			req.Header.Set("Accept", "text/calendar")
 		}
 
 		auth := base64.StdEncoding.EncodeToString([]byte(config.Username + ":" + config.Password))
 		req.Header.Set("Authorization", "Basic "+auth)
-		req.Header.Set("Accept", "text/calendar")
 
 		resp, err := client.Do(req)
 		if err != nil {
@@ -356,14 +412,27 @@ func loadICSFromRadicale(calendarURL string, calendarName string, color lipgloss
 		body, _ := io.ReadAll(resp.Body)
 		lastBody = string(body)
 
-		if resp.StatusCode == http.StatusOK {
+		if backend == "nextcloud" && resp.StatusCode == 207 {
+			// NextCloud REPORT returns 207 Multi-Status with XML containing calendar data
+			// Check if it contains vCard data
+			if strings.Contains(lastBody, "BEGIN:VCARD") || strings.Contains(lastBody, "addressbook") {
+				return nil, ErrNotACalendar
+			}
+
+			events, err := parseCalendarFromMultistatus(lastBody, calendarName, color)
+			if err == nil {
+				return events, nil
+			}
+			lastErr = err
+		} else if resp.StatusCode == http.StatusOK {
+			// Radicale GET returns 200 OK with ICS data
 			trimmedBody := strings.TrimSpace(lastBody)
-			
+
 			// Check if it's a vCard/contacts resource - skip silently
 			if strings.HasPrefix(trimmedBody, "BEGIN:VCARD") || strings.Contains(trimmedBody, "BEGIN:VCARD") {
 				return nil, ErrNotACalendar
 			}
-			
+
 			// Check if it's actually calendar data (starts with BEGIN:VCALENDAR)
 			if strings.HasPrefix(trimmedBody, "BEGIN:VCALENDAR") {
 				// Try to parse as calendar
@@ -377,12 +446,16 @@ func loadICSFromRadicale(calendarURL string, calendarName string, color lipgloss
 				return nil, ErrNotACalendar
 			}
 		} else if resp.StatusCode == 207 {
-			// Multi-status response - try to extract calendar data from XML
+			// Radicale might also return Multi-status
 			// Check if it contains vCard data
 			if strings.Contains(lastBody, "BEGIN:VCARD") || strings.Contains(lastBody, "addressbook") {
 				return nil, ErrNotACalendar
 			}
-			return parseCalendarFromMultistatus(lastBody, calendarName, color)
+			events, err := parseCalendarFromMultistatus(lastBody, calendarName, color)
+			if err == nil {
+				return events, nil
+			}
+			lastErr = err
 		} else {
 			// Log the error but try next URL
 			lastErr = fmt.Errorf("HTTP %d: %s", resp.StatusCode, lastBody[:min(200, len(lastBody))])
@@ -404,19 +477,29 @@ func min(a, b int) int {
 // Parse calendar data from CalDAV multistatus XML response
 func parseCalendarFromMultistatus(xmlBody string, calendarName string, color lipgloss.Color) ([]Event, error) {
 	// Look for calendar-data elements in the XML
-	// This is a simple regex-based approach - a proper XML parser would be better
-	re := regexp.MustCompile(`<C:calendar-data[^>]*>([\s\S]*?)</C:calendar-data>`)
-	matches := re.FindAllStringSubmatch(xmlBody, -1)
+	// Try multiple namespace patterns for calendar-data
+	patterns := []string{
+		`(?s)<cal:calendar-data[^>]*>(.*?)</cal:calendar-data>`,
+		`(?s)<C:calendar-data[^>]*>(.*?)</C:calendar-data>`,
+		`(?s)<calendar-data[^>]*>(.*?)</calendar-data>`,
+		`(?s)<ns\d:calendar-data[^>]*>(.*?)</ns\d:calendar-data>`,
+	}
 
-	if len(matches) == 0 {
+	var allMatches [][]string
+	for _, pattern := range patterns {
+		re := regexp.MustCompile(pattern)
+		matches := re.FindAllStringSubmatch(xmlBody, -1)
+		allMatches = append(allMatches, matches...)
+	}
+
+	if len(allMatches) == 0 {
 		return nil, fmt.Errorf("no calendar-data found in multistatus response")
 	}
 
-	// Combine all calendar data blocks
-	var combinedCalendar strings.Builder
-	combinedCalendar.WriteString("BEGIN:VCALENDAR\nVERSION:2.0\n")
+	// Parse each calendar data block individually and combine events
+	var allEvents []Event
 
-	for _, match := range matches {
+	for _, match := range allMatches {
 		if len(match) > 1 {
 			// Decode XML entities and extract calendar content
 			calData := match[1]
@@ -425,14 +508,22 @@ func parseCalendarFromMultistatus(xmlBody string, calendarName string, color lip
 			calData = strings.ReplaceAll(calData, "&amp;", "&")
 			calData = strings.ReplaceAll(calData, "&quot;", "\"")
 			calData = strings.ReplaceAll(calData, "&apos;", "'")
-			combinedCalendar.WriteString(calData)
+
+			// Each calendar-data block is already a complete VCALENDAR
+			events, err := loadICSFromReader(strings.NewReader(calData), calendarName, color)
+			if err != nil {
+				// Skip blocks that can't be parsed
+				continue
+			}
+			allEvents = append(allEvents, events...)
 		}
 	}
 
-	combinedCalendar.WriteString("END:VCALENDAR\n")
+	if len(allEvents) == 0 {
+		return nil, fmt.Errorf("no events found in calendar data")
+	}
 
-	// Parse the combined calendar
-	return loadICSFromReader(strings.NewReader(combinedCalendar.String()), calendarName, color)
+	return allEvents, nil
 }
 
 // Create event on Radicale server
@@ -523,8 +614,11 @@ func loadAllCalendars(radicaleConfig *RadicaleConfig) ([]Event, map[string]lipgl
 					} else if err == ErrNotACalendar {
 						// Silently skip non-calendar resources (contacts, addressbooks, etc.)
 						continue
+					} else if strings.Contains(err.Error(), "no calendar-data found") || strings.Contains(err.Error(), "no events found") {
+						// Silently skip empty calendars
+						continue
 					} else {
-						fmt.Fprintf(os.Stderr, "Warning: Failed to load Radicale calendar %s: %v\n", cal.DisplayName, err)
+						fmt.Fprintf(os.Stderr, "Warning: Failed to load calendar %s: %v\n", cal.DisplayName, err)
 					}
 					colorIndex++
 				}

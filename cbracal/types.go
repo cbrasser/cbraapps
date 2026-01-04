@@ -58,6 +58,7 @@ type CalendarConfig struct {
 }
 
 type RadicaleConfig struct {
+	Backend   string `toml:"backend"`    // "local", "radicale", or "nextcloud"
 	ServerURL string `toml:"server_url"`
 	Username  string `toml:"username"`
 	Password  string `toml:"password"`

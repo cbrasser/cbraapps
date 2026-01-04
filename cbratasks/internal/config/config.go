@@ -9,15 +9,17 @@ import (
 )
 
 type Config struct {
-	DefaultList string            `toml:"default_list"`
+	DefaultList string            `toml:"default_list"` // Default list for new tasks
 	Sync        SyncConfig        `toml:"sync"`
 	GitHub      GitHubConfig      `toml:"github"`
-	Tags        map[string]string `toml:"tags"` // tag name -> color
+	Lists       map[string]string `toml:"lists"`   // list name -> color
+	Tags        map[string]string `toml:"tags"`    // Deprecated: kept for migration only
 	Hotkeys     HotkeyConfig      `toml:"hotkeys"`
 }
 
 type SyncConfig struct {
 	Enabled  bool   `toml:"enabled"`
+	Backend  string `toml:"backend"`  // "local", "radicale", or "nextcloud"
 	URL      string `toml:"url"`
 	Username string `toml:"username"`
 	Password string `toml:"password"`
@@ -42,9 +44,10 @@ type HotkeyConfig struct {
 
 func DefaultConfig() Config {
 	return Config{
-		DefaultList: "local",
+		DefaultList: "inbox",
 		Sync: SyncConfig{
 			Enabled:  false,
+			Backend:  "radicale",
 			URL:      "https://radicale.example.com",
 			Username: "",
 			Password: "",
@@ -55,11 +58,10 @@ func DefaultConfig() Config {
 			Token:    "",
 			Repos:    []string{},
 		},
-		Tags: map[string]string{
+		Lists: map[string]string{
+			"inbox":    "#95E1D3", // mint
 			"work":     "#FF6B6B", // red
-			"home":     "#4ECDC4", // teal
-			"personal": "#95E1D3", // mint
-			"urgent":   "#F38181", // coral
+			"personal": "#4ECDC4", // teal
 			"shopping": "#AA96DA", // purple
 		},
 		Hotkeys: HotkeyConfig{
@@ -166,6 +168,8 @@ func createDefaultConfig() error {
 # Auto-generated on first run
 
 # Default task list: "local" or "radicale" (if sync enabled)
+# Supported sync backends: "radicale", "nextcloud", or "local" (default)
+# For NextCloud, set backend = "nextcloud" and URL to your NextCloud instance (e.g., https://nextcloud.example.com)
 `
 	f.WriteString(header)
 
@@ -188,14 +192,78 @@ func Save(cfg *Config) error {
 	return toml.NewEncoder(f).Encode(cfg)
 }
 
-// GetTagColor returns the color for a tag, or a default gray if not found
-func (c *Config) GetTagColor(tag string) string {
-	if color, ok := c.Tags[tag]; ok {
+// GetListColor returns the color for a list, or a default gray if not found
+func (c *Config) GetListColor(list string) string {
+	if color, ok := c.Lists[list]; ok {
 		return color
 	}
 	return "#888888"
 }
 
+// ListExists checks if a list is defined in the config
+func (c *Config) ListExists(list string) bool {
+	_, ok := c.Lists[list]
+	return ok
+}
+
+// AddList adds a new list with a color
+func (c *Config) AddList(name, color string) {
+	if c.Lists == nil {
+		c.Lists = make(map[string]string)
+	}
+	c.Lists[name] = color
+}
+
+// RemoveList removes a list from the config
+func (c *Config) RemoveList(name string) {
+	delete(c.Lists, name)
+}
+
+// GetAllLists returns all list names
+func (c *Config) GetAllLists() []string {
+	lists := make([]string, 0, len(c.Lists))
+	for name := range c.Lists {
+		lists = append(lists, name)
+	}
+	return lists
+}
+
+// MigrateTagsToLists migrates old tag configuration to lists
+func (c *Config) MigrateTagsToLists() {
+	// If we already have lists, migration already done
+	if len(c.Lists) > 0 {
+		return
+	}
+
+	// Migrate tags to lists
+	if len(c.Tags) > 0 {
+		c.Lists = make(map[string]string)
+		for tag, color := range c.Tags {
+			c.Lists[tag] = color
+		}
+		c.Tags = nil // Clear tags after migration
+	}
+
+	// Ensure we have a default list
+	if c.DefaultList == "" || c.DefaultList == "local" || c.DefaultList == "radicale" {
+		c.DefaultList = "inbox"
+	}
+
+	// Ensure default list exists in lists
+	if !c.ListExists(c.DefaultList) {
+		c.AddList(c.DefaultList, "#95E1D3")
+	}
+}
+
+// GetTagColor returns the color for a tag (deprecated - kept for backward compatibility)
+func (c *Config) GetTagColor(tag string) string {
+	if color, ok := c.Tags[tag]; ok {
+		return color
+	}
+	// Fall back to list colors
+	return c.GetListColor(tag)
+}
+
 func (c *Config) String() string {
-	return fmt.Sprintf("Config{DefaultList: %s, SyncEnabled: %v}", c.DefaultList, c.Sync.Enabled)
+	return fmt.Sprintf("Config{DefaultList: %s, SyncEnabled: %v, Lists: %d}", c.DefaultList, c.Sync.Enabled, len(c.Lists))
 }

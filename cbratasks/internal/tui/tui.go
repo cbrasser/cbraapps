@@ -292,8 +292,8 @@ func (i focusItem) Description() string {
 	if i.task.DueDate != nil {
 		parts = append(parts, i.task.DueString())
 	}
-	if len(i.task.Tags) > 0 {
-		parts = append(parts, strings.Join(i.task.Tags, ", "))
+	if i.task.List != "" {
+		parts = append(parts, i.task.List)
 	}
 	return strings.Join(parts, " • ")
 }
@@ -330,8 +330,8 @@ func (i archiveItem) Description() string {
 	if i.task.CompletedAt != nil {
 		parts = append(parts, "Completed: "+i.task.CompletedAt.Format("Jan 02, 2006"))
 	}
-	if len(i.task.Tags) > 0 {
-		parts = append(parts, strings.Join(i.task.Tags, ", "))
+	if i.task.List != "" {
+		parts = append(parts, i.task.List)
 	}
 	return strings.Join(parts, " • ")
 }
@@ -443,7 +443,7 @@ func NewModel(cfg *config.Config, store *storage.Storage) Model {
 
 	// Add task input
 	ai := textinput.New()
-	ai.Placeholder = "Task title (+tag for tags, +1d for due)"
+	ai.Placeholder = "Task title (:list for list, +1d for due)"
 	ai.Width = 50
 
 	// Note textarea
@@ -663,7 +663,7 @@ func (m *Model) initNewIssueForm() {
 func (m *Model) initEditForm(t *task.Task) {
 	// Prepare initial values
 	editTitle := t.Title
-	editTags := strings.Join(t.Tags, ", ")
+	editList := t.List
 	editDueDate := ""
 	if t.DueDate != nil {
 		editDueDate = t.DueDate.Format("2006-01-02")
@@ -678,10 +678,10 @@ func (m *Model) initEditForm(t *task.Task) {
 				Key("title"),
 
 			huh.NewInput().
-				Title("Tags (comma-separated)").
-				Value(&editTags).
-				Placeholder("work, important").
-				Key("tags"),
+				Title("List").
+				Value(&editList).
+				Placeholder("work, personal, inbox").
+				Key("list"),
 
 			huh.NewInput().
 				Title("Due Date").
@@ -792,7 +792,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.editingTask != nil {
 				// Get values from form using Get methods
 				newTitle := m.editForm.GetString("title")
-				newTags := m.editForm.GetString("tags")
+				newList := m.editForm.GetString("list")
 				newDueDate := m.editForm.GetString("duedate")
 
 				// Get the task from storage to ensure we have the latest version
@@ -808,16 +808,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Update the title
 				taskToUpdate.Title = strings.TrimSpace(newTitle)
 
-				// Parse and set tags
-				taskToUpdate.Tags = []string{}
-				if strings.TrimSpace(newTags) != "" {
-					tagParts := strings.Split(newTags, ",")
-					for _, tag := range tagParts {
-						tag = strings.TrimSpace(tag)
-						if tag != "" {
-							taskToUpdate.Tags = append(taskToUpdate.Tags, strings.ToLower(tag))
-						}
-					}
+				// Update list
+				if strings.TrimSpace(newList) != "" {
+					taskToUpdate.SetList(strings.TrimSpace(newList))
 				}
 
 				// Parse and set due date
@@ -839,7 +832,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 				// Save the task
 				var err error
-				if taskToUpdate.ListName == "radicale" && m.storage.IsSyncEnabled() {
+				if m.storage.IsSyncEnabled() {
 					err = m.storage.UpdateTaskWithSync(taskToUpdate)
 				} else {
 					err = m.storage.UpdateTask(taskToUpdate)
@@ -971,8 +964,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				wasCompleted := t.Completed
 				cursorPos := m.cursor
 
-				// Start sync spinner if this is a radicale task
-				if t.ListName == "radicale" && m.storage.IsSyncEnabled() {
+				// Start sync spinner if sync is enabled
+				if m.storage.IsSyncEnabled() {
 					m.syncing = true
 					cmds = append(cmds, m.spinner.Tick)
 				}
@@ -1214,9 +1207,10 @@ func (m Model) handleNoteInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Save note and exit
 		if m.editingTask != nil {
 			m.editingTask.SetNote(m.noteArea.Value())
-			m.storage.UpdateTask(m.editingTask)
-			if m.editingTask.ListName == "radicale" {
-				m.storage.PushTask(m.editingTask)
+			if m.storage.IsSyncEnabled() {
+				m.storage.UpdateTaskWithSync(m.editingTask)
+			} else {
+				m.storage.UpdateTask(m.editingTask)
 			}
 			m.tasks = m.storage.GetTasks()
 			m.statusMsg = "Note saved"
@@ -1230,9 +1224,10 @@ func (m Model) handleNoteInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Save note explicitly
 		if m.editingTask != nil {
 			m.editingTask.SetNote(m.noteArea.Value())
-			m.storage.UpdateTask(m.editingTask)
-			if m.editingTask.ListName == "radicale" {
-				m.storage.PushTask(m.editingTask)
+			if m.storage.IsSyncEnabled() {
+				m.storage.UpdateTaskWithSync(m.editingTask)
+			} else {
+				m.storage.UpdateTask(m.editingTask)
 			}
 			m.tasks = m.storage.GetTasks()
 			m.statusMsg = "Note saved"
@@ -1287,8 +1282,8 @@ func (m Model) handleFocusMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if selectedItem, ok := m.focusList.SelectedItem().(focusItem); ok {
 			t := selectedItem.task
 
-			// Start sync spinner if this is a radicale task
-			if t.ListName == "radicale" && m.storage.IsSyncEnabled() {
+			// Start sync spinner if sync is enabled
+			if m.storage.IsSyncEnabled() {
 				m.syncing = true
 			}
 
@@ -1379,22 +1374,25 @@ func (m Model) handleArchiveMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// parseTaskInput parses input like "Buy milk +shopping +1d"
+// parseTaskInput parses input like "Buy milk :shopping +1d"
 func (m Model) parseTaskInput(input string) *task.Task {
 	parts := strings.Fields(input)
 	var titleParts []string
-	var tags []string
+	var listName string
 	var dueStr string
 
 	for _, part := range parts {
-		if strings.HasPrefix(part, "+") {
-			suffix := part[1:]
+		if strings.HasPrefix(part, ":") {
+			// It's a list name
+			listName = strings.ToLower(part[1:])
+		} else if strings.HasPrefix(part, "+") {
 			// Check if it's a date pattern
+			suffix := part[1:]
 			if _, err := task.ParseDueDate(suffix); err == nil {
 				dueStr = suffix
 			} else {
-				// It's a tag
-				tags = append(tags, suffix)
+				// Unknown +pattern, add to title
+				titleParts = append(titleParts, part)
 			}
 		} else {
 			titleParts = append(titleParts, part)
@@ -1402,11 +1400,13 @@ func (m Model) parseTaskInput(input string) *task.Task {
 	}
 
 	title := strings.Join(titleParts, " ")
-	newTask := task.NewTask(title, m.config.DefaultList)
 
-	for _, tag := range tags {
-		newTask.AddTag(tag)
+	// Use specified list or default
+	if listName == "" {
+		listName = m.config.DefaultList
 	}
+
+	newTask := task.NewTask(title, listName)
 
 	if dueStr != "" {
 		if due, err := task.ParseDueDate(dueStr); err == nil {
@@ -1480,7 +1480,7 @@ func (m Model) View() string {
 	// Add task form (if active)
 	if m.view == viewAddTask {
 		b.WriteString(inputStyle.Render("➕ "+m.addInput.View()) + "\n")
-		b.WriteString(helpStyle.Render("  +tag for tags, +1d/+1w/tomorrow for due") + "\n\n")
+		b.WriteString(helpStyle.Render("  :list for list, +1d/+1w/tomorrow for due") + "\n\n")
 	}
 
 	// Edit task form (if active)
@@ -1578,19 +1578,15 @@ func (m Model) renderTask(t *task.Task, selected bool) string {
 		}
 	}
 
-	// Tags
-	var tagParts []string
-	for _, tag := range t.Tags {
-		color := m.config.GetTagColor(tag)
-		tagParts = append(tagParts, tagStyle.Background(lipgloss.Color(color)).Render(tag))
-	}
-	tags := ""
-	if len(tagParts) > 0 {
-		tags = " " + strings.Join(tagParts, " ")
+	// List name (displayed as a colored tag)
+	listTag := ""
+	if t.List != "" {
+		color := m.config.GetListColor(t.List)
+		listTag = " " + tagStyle.Background(lipgloss.Color(color)).Render(t.List)
 	}
 
 	// Combine
-	line := fmt.Sprintf("  %s %s%s%s%s", checkbox, titleRendered, noteIndicator, dueStr, tags)
+	line := fmt.Sprintf("  %s %s%s%s%s", checkbox, titleRendered, noteIndicator, dueStr, listTag)
 
 	if selected {
 		// Highlight the whole line

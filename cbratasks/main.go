@@ -23,7 +23,6 @@ func main() {
 
 	// Add command with flags
 	var dueFlag string
-	var tagsFlag []string
 	var listFlag string
 	var noteFlag string
 
@@ -35,18 +34,17 @@ func main() {
 Examples:
   cbratasks add "Buy groceries"
   cbratasks add "Meeting with John" --due tomorrow
-  cbratasks add "Fix bug" --due +3d --tag work --tag urgent
-  cbratasks add "Weekend project" --due nextweek --tag home
+  cbratasks add "Fix bug" --due +3d --list work
+  cbratasks add "Weekend project" --due nextweek --list personal
   cbratasks add "Call mom" --note "Ask about birthday plans"`,
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runAdd(args, dueFlag, tagsFlag, listFlag, noteFlag)
+			return runAdd(args, dueFlag, listFlag, noteFlag)
 		},
 	}
 
 	addCmd.Flags().StringVarP(&dueFlag, "due", "d", "", "Due date (+1d, +1w, tomorrow, nextweek, DD-MM-YYYY)")
-	addCmd.Flags().StringSliceVarP(&tagsFlag, "tag", "T", nil, "Tags (can be specified multiple times)")
-	addCmd.Flags().StringVarP(&listFlag, "list", "l", "", "Task list (local or radicale)")
+	addCmd.Flags().StringVarP(&listFlag, "list", "l", "", "Task list (inbox, work, personal, etc.)")
 	addCmd.Flags().StringVarP(&noteFlag, "note", "n", "", "Attach a note to the task")
 
 	listCmd := &cobra.Command{
@@ -54,6 +52,51 @@ Examples:
 		Short: "List all tasks",
 		RunE:  runList,
 	}
+
+	// List management commands
+	listMgmtCmd := &cobra.Command{
+		Use:   "lists",
+		Short: "Manage task lists",
+	}
+
+	listLsCmd := &cobra.Command{
+		Use:   "ls",
+		Short: "Show all configured lists",
+		RunE:  runListLs,
+	}
+
+	listAddCmd := &cobra.Command{
+		Use:   "add <name> <color>",
+		Short: "Add a new list",
+		Long: `Add a new task list with a color.
+
+Color should be in hex format (e.g., #FF6B6B).
+
+Examples:
+  cbratasks lists add work #FF6B6B
+  cbratasks lists add home #4ECDC4`,
+		Args: cobra.ExactArgs(2),
+		RunE: runListAdd,
+	}
+
+	listRemoveCmd := &cobra.Command{
+		Use:   "remove <name>",
+		Short: "Remove a list",
+		Args:  cobra.ExactArgs(1),
+		RunE:  runListRemove,
+	}
+
+	listSetDefaultCmd := &cobra.Command{
+		Use:   "set-default <name>",
+		Short: "Set the default list for new tasks",
+		Args:  cobra.ExactArgs(1),
+		RunE:  runListSetDefault,
+	}
+
+	listMgmtCmd.AddCommand(listLsCmd)
+	listMgmtCmd.AddCommand(listAddCmd)
+	listMgmtCmd.AddCommand(listRemoveCmd)
+	listMgmtCmd.AddCommand(listSetDefaultCmd)
 
 	todayCmd := &cobra.Command{
 		Use:   "today",
@@ -85,6 +128,7 @@ A 'cbratasks' collection will be created automatically if it doesn't exist.`,
 
 	rootCmd.AddCommand(addCmd)
 	rootCmd.AddCommand(listCmd)
+	rootCmd.AddCommand(listMgmtCmd)
 	rootCmd.AddCommand(todayCmd)
 	rootCmd.AddCommand(archiveCmd)
 	rootCmd.AddCommand(syncCmd)
@@ -108,7 +152,7 @@ func runTUI(cmd *cobra.Command, args []string) error {
 	return tui.Run(cfg, store)
 }
 
-func runAdd(args []string, dueFlag string, tagsFlag []string, listFlag string, noteFlag string) error {
+func runAdd(args []string, dueFlag string, listFlag string, noteFlag string) error {
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
@@ -129,11 +173,6 @@ func runAdd(args []string, dueFlag string, tagsFlag []string, listFlag string, n
 	title := strings.Join(args, " ")
 	newTask := task.NewTask(title, listName)
 
-	// Add tags
-	for _, tag := range tagsFlag {
-		newTask.AddTag(tag)
-	}
-
 	// Parse due date
 	if dueFlag != "" {
 		due, err := task.ParseDueDate(dueFlag)
@@ -148,7 +187,7 @@ func runAdd(args []string, dueFlag string, tagsFlag []string, listFlag string, n
 		newTask.SetNote(noteFlag)
 	}
 
-	// Save the task (with sync if radicale)
+	// Save the task (with sync if enabled)
 	if err := store.AddTaskWithSync(newTask); err != nil {
 		return fmt.Errorf("failed to add task: %w", err)
 	}
@@ -156,13 +195,10 @@ func runAdd(args []string, dueFlag string, tagsFlag []string, listFlag string, n
 	// Print confirmation
 	fmt.Printf("✓ Added: %s\n", newTask.Title)
 	fmt.Printf("  ID: %s\n", newTask.ID)
+	fmt.Printf("  List: %s\n", newTask.List)
 
 	if newTask.DueDate != nil {
 		fmt.Printf("  Due: %s\n", newTask.DueString())
-	}
-
-	if len(newTask.Tags) > 0 {
-		fmt.Printf("  Tags: %s\n", strings.Join(newTask.Tags, ", "))
 	}
 
 	if newTask.HasNote() {
@@ -209,8 +245,8 @@ func runList(cmd *cobra.Command, args []string) error {
 			line += fmt.Sprintf(" [%s]", t.DueString())
 		}
 
-		if len(t.Tags) > 0 {
-			line += fmt.Sprintf(" (%s)", strings.Join(t.Tags, ", "))
+		if t.List != "" {
+			line += fmt.Sprintf(" (%s)", t.List)
 		}
 
 		if t.IsOverdue() {
@@ -248,8 +284,8 @@ func runToday(cmd *cobra.Command, args []string) error {
 	for _, t := range tasks {
 		line := fmt.Sprintf("- %s", t.Title)
 
-		if len(t.Tags) > 0 {
-			line += fmt.Sprintf(" [%s]", strings.Join(t.Tags, ", "))
+		if t.List != "" {
+			line += fmt.Sprintf(" [%s]", t.List)
 		}
 
 		line += fmt.Sprintf(" (%s)", t.ID)
@@ -324,14 +360,123 @@ func runSync(cmd *cobra.Command, args []string) error {
 
 	// Show synced tasks count
 	tasks := store.GetTasks()
-	radicaleCount := 0
-	for _, t := range tasks {
-		if t.ListName == "radicale" {
-			radicaleCount++
-		}
+
+	fmt.Printf("✓ Sync complete! (%d total tasks)\n", len(tasks))
+
+	return nil
+}
+
+func runListLs(cmd *cobra.Command, args []string) error {
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	fmt.Printf("✓ Sync complete! (%d tasks from server)\n", radicaleCount)
+	lists := cfg.GetAllLists()
+	if len(lists) == 0 {
+		fmt.Println("No lists configured.")
+		return nil
+	}
+
+	fmt.Println("📋 Task Lists:")
+	fmt.Println()
+
+	for _, name := range lists {
+		color := cfg.GetListColor(name)
+		defaultMarker := ""
+		if name == cfg.DefaultList {
+			defaultMarker = " (default)"
+		}
+		fmt.Printf("  • %s - %s%s\n", name, color, defaultMarker)
+	}
+
+	fmt.Println()
+	fmt.Printf("Total: %d lists\n", len(lists))
+
+	return nil
+}
+
+func runListAdd(cmd *cobra.Command, args []string) error {
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	name := strings.ToLower(strings.TrimSpace(args[0]))
+	color := strings.TrimSpace(args[1])
+
+	if name == "" {
+		return fmt.Errorf("list name cannot be empty")
+	}
+
+	// Validate color format (basic check for # prefix)
+	if !strings.HasPrefix(color, "#") {
+		return fmt.Errorf("color must be in hex format (e.g., #FF6B6B)")
+	}
+
+	// Check if list already exists
+	if cfg.ListExists(name) {
+		return fmt.Errorf("list '%s' already exists", name)
+	}
+
+	cfg.AddList(name, color)
+
+	if err := config.Save(cfg); err != nil {
+		return fmt.Errorf("failed to save config: %w", err)
+	}
+
+	fmt.Printf("✓ Added list '%s' with color %s\n", name, color)
+
+	return nil
+}
+
+func runListRemove(cmd *cobra.Command, args []string) error {
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	name := strings.ToLower(strings.TrimSpace(args[0]))
+
+	if !cfg.ListExists(name) {
+		return fmt.Errorf("list '%s' does not exist", name)
+	}
+
+	if name == cfg.DefaultList {
+		return fmt.Errorf("cannot remove default list, set a different default list first")
+	}
+
+	cfg.RemoveList(name)
+
+	if err := config.Save(cfg); err != nil {
+		return fmt.Errorf("failed to save config: %w", err)
+	}
+
+	fmt.Printf("✓ Removed list '%s'\n", name)
+	fmt.Println("Note: Tasks in this list will not be deleted, but the list won't show a color.")
+
+	return nil
+}
+
+func runListSetDefault(cmd *cobra.Command, args []string) error {
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	name := strings.ToLower(strings.TrimSpace(args[0]))
+
+	if !cfg.ListExists(name) {
+		return fmt.Errorf("list '%s' does not exist, add it first with: cbratasks lists add %s <color>", name, name)
+	}
+
+	cfg.DefaultList = name
+
+	if err := config.Save(cfg); err != nil {
+		return fmt.Errorf("failed to save config: %w", err)
+	}
+
+	fmt.Printf("✓ Set default list to '%s'\n", name)
 
 	return nil
 }
