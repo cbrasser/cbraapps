@@ -187,21 +187,16 @@ func loadCalendarsFromRadicale(config *RadicaleConfig) ([]CalDAVCalendar, error)
 		req.Header.Set("Content-Type", "application/xml; charset=utf-8")
 		req.Header.Set("Depth", "1")
 
-		// Create PROPFIND request body
-		propfind := propfindRequest{
-			Prop: prop{
-				DisplayName: "",
-			},
-		}
-
+		// Create PROPFIND request body with all needed properties
 		var buf bytes.Buffer
-		buf.WriteString(`<?xml version="1.0" encoding="UTF-8"?>`)
-		enc := xml.NewEncoder(&buf)
-		enc.Indent("", "  ")
-		if err := enc.Encode(propfind); err != nil {
-			lastErr = err
-			continue
-		}
+		buf.WriteString(`<?xml version="1.0" encoding="UTF-8"?>
+<d:propfind xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
+  <d:prop>
+    <d:displayname/>
+    <d:resourcetype/>
+    <c:supported-calendar-component-set/>
+  </d:prop>
+</d:propfind>`)
 
 		req.Body = io.NopCloser(&buf)
 		req.ContentLength = int64(buf.Len())
@@ -256,6 +251,37 @@ func loadCalendarsFromRadicale(config *RadicaleConfig) ([]CalDAVCalendar, error)
 				continue
 			}
 
+			// Check if this is a deleted calendar (NextCloud specific)
+			if successfulPropstat.Prop.ResourceType.DeletedCalendar != nil {
+				continue
+			}
+
+			// Skip system collections
+			if successfulPropstat.Prop.ResourceType.ScheduleInbox != nil ||
+				successfulPropstat.Prop.ResourceType.ScheduleOutbox != nil ||
+				successfulPropstat.Prop.ResourceType.TrashBin != nil {
+				continue
+			}
+
+			// Only include actual calendars (must have calendar resource type)
+			if successfulPropstat.Prop.ResourceType.Calendar == nil {
+				continue
+			}
+
+			// Check if this calendar supports VEVENT
+			// We want to skip task-only calendars (VTODO-only) since this is a calendar app
+			hasVEVENT := false
+			for _, comp := range successfulPropstat.Prop.SupportedComponentSet.Comp {
+				if strings.ToUpper(comp.Name) == "VEVENT" {
+					hasVEVENT = true
+					break
+				}
+			}
+
+			if !hasVEVENT {
+				continue
+			}
+
 			// Filter out the collection itself and only get calendar collections
 			href := r.Href
 			// Normalize the href - handle relative and absolute paths
@@ -291,12 +317,16 @@ func loadCalendarsFromRadicale(config *RadicaleConfig) ([]CalDAVCalendar, error)
 			// Get path name for filtering
 			pathName := path.Base(strings.TrimSuffix(href, "/"))
 
-			// Skip system collections, but allow calendars under username path
-			// Calendars can be at /username/ or /username/calendarname/
+			// Skip system collections: inbox, outbox, trashbin, user, principals
 			skip := false
-			if pathName == "user" || pathName == "principals" {
-				skip = true
+			systemCollections := []string{"inbox", "outbox", "trashbin", "user", "principals"}
+			for _, sysCol := range systemCollections {
+				if pathName == sysCol {
+					skip = true
+					break
+				}
 			}
+
 			// Only skip if the pathName equals username AND it's a direct child of root
 			// (not if it's a calendar under the username)
 			if pathName == config.Username && strings.Count(href, "/") <= 2 {

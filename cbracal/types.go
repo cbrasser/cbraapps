@@ -89,10 +89,27 @@ type propfindRequest struct {
 	Prop    prop     `xml:"DAV: prop"`
 }
 
+type resourceType struct {
+	Collection      *struct{} `xml:"DAV: collection"`
+	Calendar        *struct{} `xml:"urn:ietf:params:xml:ns:caldav calendar"`
+	DeletedCalendar *struct{} `xml:"http://nextcloud.com/ns deleted-calendar"`
+	ScheduleInbox   *struct{} `xml:"urn:ietf:params:xml:ns:caldav schedule-inbox"`
+	ScheduleOutbox  *struct{} `xml:"urn:ietf:params:xml:ns:caldav schedule-outbox"`
+	TrashBin        *struct{} `xml:"http://nextcloud.com/ns trash-bin"`
+}
+
+type supportedComponentSet struct {
+	Comp []struct {
+		Name string `xml:"name,attr"`
+	} `xml:"urn:ietf:params:xml:ns:caldav comp"`
+}
+
 type prop struct {
-	DisplayName         string `xml:"DAV: displayname"`
-	CalendarDescription string `xml:"urn:ietf:params:xml:ns:caldav calendar-description"`
-	CalendarColor       string `xml:"http://apple.com/ns/ical/ calendar-color"`
+	DisplayName              string                `xml:"DAV: displayname"`
+	CalendarDescription      string                `xml:"urn:ietf:params:xml:ns:caldav calendar-description"`
+	CalendarColor            string                `xml:"http://apple.com/ns/ical/ calendar-color"`
+	ResourceType             resourceType          `xml:"DAV: resourcetype"`
+	SupportedComponentSet    supportedComponentSet `xml:"urn:ietf:params:xml:ns:caldav supported-calendar-component-set"`
 }
 
 type multistatus struct {
