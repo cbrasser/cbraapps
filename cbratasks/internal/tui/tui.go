@@ -924,10 +924,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleSearchInput(msg)
 		case viewAddTask:
 			return m.handleAddInput(msg)
-		case viewEditNote:
-			return m.handleNoteInput(msg)
-		case viewViewNote:
-			return m.handleViewNote(msg)
+
 		case viewFocus:
 			return m.handleFocusMode(msg)
 		case viewArchive:
@@ -1003,26 +1000,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.cursor--
 				}
 				m.statusMsg = "Task deleted"
-			}
-
-		case m.config.Hotkeys.EditNote:
-			if len(m.tasks) > 0 && m.cursor < len(m.tasks) {
-				t := m.tasks[m.cursor]
-				m.editingTask = t
-				m.noteArea.SetValue(t.Note)
-				m.noteArea.Focus()
-				m.view = viewEditNote
-				return m, textarea.Blink
-			}
-
-		case m.config.Hotkeys.ViewNote:
-			// Tab - view note if task has one
-			if len(m.tasks) > 0 && m.cursor < len(m.tasks) {
-				t := m.tasks[m.cursor]
-				if t.HasNote() {
-					m.viewingTask = t
-					m.view = viewViewNote
-				}
 			}
 
 		case m.config.Hotkeys.Search:
@@ -1197,71 +1174,6 @@ func (m Model) handleAddInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.addInput, cmd = m.addInput.Update(msg)
 	return m, cmd
-}
-
-func (m Model) handleNoteInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	key := msg.String()
-
-	switch key {
-	case "esc":
-		// Save note and exit
-		if m.editingTask != nil {
-			m.editingTask.SetNote(m.noteArea.Value())
-			if m.storage.IsSyncEnabled() {
-				m.storage.UpdateTaskWithSync(m.editingTask)
-			} else {
-				m.storage.UpdateTask(m.editingTask)
-			}
-			m.tasks = m.storage.GetTasks()
-			m.statusMsg = "Note saved"
-		}
-		m.view = viewList
-		m.editingTask = nil
-		m.noteArea.Blur()
-		return m, nil
-
-	case "ctrl+s":
-		// Save note explicitly
-		if m.editingTask != nil {
-			m.editingTask.SetNote(m.noteArea.Value())
-			if m.storage.IsSyncEnabled() {
-				m.storage.UpdateTaskWithSync(m.editingTask)
-			} else {
-				m.storage.UpdateTask(m.editingTask)
-			}
-			m.tasks = m.storage.GetTasks()
-			m.statusMsg = "Note saved"
-		}
-		return m, nil
-	}
-
-	var cmd tea.Cmd
-	m.noteArea, cmd = m.noteArea.Update(msg)
-	return m, cmd
-}
-
-func (m Model) handleViewNote(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	key := msg.String()
-
-	switch key {
-	case "esc", "tab", "enter", "q":
-		m.view = viewList
-		m.viewingTask = nil
-		return m, nil
-
-	case m.config.Hotkeys.EditNote:
-		// Switch to edit mode
-		if m.viewingTask != nil {
-			m.editingTask = m.viewingTask
-			m.noteArea.SetValue(m.viewingTask.Note)
-			m.noteArea.Focus()
-			m.viewingTask = nil
-			m.view = viewEditNote
-			return m, textarea.Blink
-		}
-	}
-
-	return m, nil
 }
 
 func (m Model) handleFocusMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -1492,20 +1404,8 @@ func (m Model) View() string {
 	}
 
 	// Note editor (if active)
-	if m.view == viewEditNote && m.editingTask != nil {
-		b.WriteString(titleStyle.Render("📝 Note for: "+m.editingTask.Title) + "\n")
-		b.WriteString(noteBoxStyle.Render(m.noteArea.View()) + "\n")
-		b.WriteString(helpStyle.Render("  esc: save & close • ctrl+s: save") + "\n\n")
-		return b.String()
-	}
 
 	// Note viewer (if active)
-	if m.view == viewViewNote && m.viewingTask != nil {
-		b.WriteString(titleStyle.Render("📝 Note for: "+m.viewingTask.Title) + "\n")
-		b.WriteString(noteBoxStyle.Render(m.viewingTask.Note) + "\n")
-		b.WriteString(helpStyle.Render(fmt.Sprintf("  esc/tab: close • %s: edit", m.config.Hotkeys.EditNote)) + "\n\n")
-		return b.String()
-	}
 
 	// Task list
 	if len(m.tasks) == 0 {
@@ -1564,9 +1464,11 @@ func (m Model) renderTask(t *task.Task, selected bool) string {
 
 	// Note indicator
 	noteIndicator := ""
-	if t.HasNote() {
-		noteIndicator = noteIndicatorStyle.Render(" 📝")
-	}
+	/*
+		if t.HasNote() {
+			noteIndicator = noteIndicatorStyle.Render(" 📝")
+		}
+	*/
 
 	// Due date
 	dueStr := ""

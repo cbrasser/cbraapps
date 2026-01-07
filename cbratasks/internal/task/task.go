@@ -99,17 +99,6 @@ func (t *Task) SetDueDate(d time.Time) {
 	t.UpdatedAt = time.Now()
 }
 
-// SetNote sets the note
-func (t *Task) SetNote(note string) {
-	t.Note = note
-	t.UpdatedAt = time.Now()
-}
-
-// HasNote returns true if task has a note
-func (t *Task) HasNote() bool {
-	return strings.TrimSpace(t.Note) != ""
-}
-
 // ShouldArchive returns true if the task should be archived
 // (completed more than 24 hours ago)
 func (t *Task) ShouldArchive() bool {

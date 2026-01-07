@@ -285,10 +285,7 @@ func taskToVTODO(t *task.Task) string {
 	// Summary (title)
 	b.WriteString(fmt.Sprintf("SUMMARY:%s\r\n", escapeICalText(t.Title)))
 
-	// Description (note) - this is how notes sync with CalDAV
-	if t.Note != "" {
-		b.WriteString(fmt.Sprintf("DESCRIPTION:%s\r\n", escapeICalText(t.Note)))
-	}
+	// Description (note) - Removed as Note field doesn't exist anymore
 
 	// Due date - use full datetime in UTC for mobile app compatibility
 	if t.DueDate != nil {
@@ -429,7 +426,7 @@ func vtodoToTask(ical string) (*task.Task, error) {
 		} else if strings.HasPrefix(line, "SUMMARY:") {
 			t.Title = unescapeICalText(strings.TrimPrefix(line, "SUMMARY:"))
 		} else if strings.HasPrefix(line, "DESCRIPTION:") {
-			t.Note = unescapeICalText(strings.TrimPrefix(line, "DESCRIPTION:"))
+			// t.Note = unescapeICalText(strings.TrimPrefix(line, "DESCRIPTION:"))
 		} else if strings.HasPrefix(line, "DUE") {
 			due := parseDueLine(line)
 			if due != nil {

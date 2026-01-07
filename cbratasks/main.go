@@ -24,7 +24,6 @@ func main() {
 	// Add command with flags
 	var dueFlag string
 	var listFlag string
-	var noteFlag string
 
 	addCmd := &cobra.Command{
 		Use:   "add [task title]",
@@ -39,13 +38,12 @@ Examples:
   cbratasks add "Call mom" --note "Ask about birthday plans"`,
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runAdd(args, dueFlag, listFlag, noteFlag)
+			return runAdd(args, dueFlag, listFlag)
 		},
 	}
 
 	addCmd.Flags().StringVarP(&dueFlag, "due", "d", "", "Due date (+1d, +1w, tomorrow, nextweek, DD-MM-YYYY)")
 	addCmd.Flags().StringVarP(&listFlag, "list", "l", "", "Task list (inbox, work, personal, etc.)")
-	addCmd.Flags().StringVarP(&noteFlag, "note", "n", "", "Attach a note to the task")
 
 	listCmd := &cobra.Command{
 		Use:   "list",
@@ -152,7 +150,7 @@ func runTUI(cmd *cobra.Command, args []string) error {
 	return tui.Run(cfg, store)
 }
 
-func runAdd(args []string, dueFlag string, listFlag string, noteFlag string) error {
+func runAdd(args []string, dueFlag string, listFlag string) error {
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
@@ -182,11 +180,6 @@ func runAdd(args []string, dueFlag string, listFlag string, noteFlag string) err
 		newTask.SetDueDate(*due)
 	}
 
-	// Add note
-	if noteFlag != "" {
-		newTask.SetNote(noteFlag)
-	}
-
 	// Save the task (with sync if enabled)
 	if err := store.AddTaskWithSync(newTask); err != nil {
 		return fmt.Errorf("failed to add task: %w", err)
@@ -199,10 +192,6 @@ func runAdd(args []string, dueFlag string, listFlag string, noteFlag string) err
 
 	if newTask.DueDate != nil {
 		fmt.Printf("  Due: %s\n", newTask.DueString())
-	}
-
-	if newTask.HasNote() {
-		fmt.Printf("  Note: %s\n", newTask.Note)
 	}
 
 	return nil
@@ -236,10 +225,6 @@ func runList(cmd *cobra.Command, args []string) error {
 		}
 
 		line := fmt.Sprintf("  %s %s", checkbox, t.Title)
-
-		if t.HasNote() {
-			line += " 📝"
-		}
 
 		if t.DueDate != nil {
 			line += fmt.Sprintf(" [%s]", t.DueString())

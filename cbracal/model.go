@@ -52,11 +52,14 @@ func initialModel(viewMode ViewMode, oneShot bool, radicaleConfig *RadicaleConfi
 		err:              nil,
 		radicaleConfig:   radicaleConfig,
 		selectedCalendar: "",
+		selectedEventIdx: 0,
 		uiFormState: UIFormState{
 			date:      currentDate,
 			startTime: "09:00",
 			endTime:   "10:00",
 		},
+		// ... (existing fields)
+		selectedEventIdx:  0, // Selection index for events
 		eventForm:         eventForm,
 		loadingProgress:   prog,
 		loadingSpinner:    s,
@@ -260,6 +263,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.currentDate = m.currentDate.AddDate(0, -1, 0)
 			}
 			m.dayInput = ""
+			m.selectedEventIdx = 0 // Reset selection
 		case "right", "l":
 			if m.viewMode == DailyView {
 				m.currentDate = m.currentDate.AddDate(0, 0, 1)
@@ -269,18 +273,33 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.currentDate = m.currentDate.AddDate(0, 1, 0)
 			}
 			m.dayInput = ""
+			m.selectedEventIdx = 0 // Reset selection
 		case "t":
 			m.currentDate = time.Now()
 			m.dayInput = ""
+			m.selectedEventIdx = 0 // Reset selection
 		case "d":
 			m.viewMode = DailyView
 			m.dayInput = ""
+			m.selectedEventIdx = 0 // Reset selection
 		case "w":
 			m.viewMode = WeeklyView
 			m.dayInput = ""
+			m.selectedEventIdx = 0 // Reset selection
 		case "m":
 			m.viewMode = MonthlyView
 			m.dayInput = ""
+			m.selectedEventIdx = 0 // Reset selection
+		case "tab":
+			// Navigate to next event
+			m.selectedEventIdx++
+			// Bounds check should happen in View because we don't know how many events are visible here easily without recalculating
+			// Ideally we should calculate visible events here or check bounds against m.getEventsForDay/Week
+		case "shift+tab":
+			// Navigate to previous event
+			if m.selectedEventIdx > 0 {
+				m.selectedEventIdx--
+			}
 		case "enter":
 			if m.viewMode == MonthlyView && m.dayInput != "" {
 				if day, err := strconv.Atoi(m.dayInput); err == nil && day >= 1 && day <= 31 {

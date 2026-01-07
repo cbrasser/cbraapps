@@ -20,10 +20,7 @@ import (
 
 type Storage struct {
 	tasks    []*task.Task
-<<<<<<< HEAD
-=======
 	issues   []*github.Issue
->>>>>>> 898c55541e02bb68570a3f243a3a31bb60619efb
 	archived []*task.Task
 	dataDir  string
 	mu       sync.RWMutex
