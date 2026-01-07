@@ -14,10 +14,12 @@ const defaultConfigTOML = `# cbracal - Calendar Configuration
 #
 # This is the default configuration file. Customize it according to your needs.
 
-# Radicale CalDAV server configuration (optional)
-# Uncomment and fill in your details to sync with a Radicale server
+# CalDAV server configuration (optional)
+# Uncomment and fill in your details to sync with a CalDAV server
+# Supported backends: "radicale", "nextcloud", or "local" (default)
 # [radicale]
-# server_url = "https://your-radicale-server.com"
+# backend = "radicale"  # or "nextcloud" for NextCloud
+# server_url = "https://your-server.com"  # For NextCloud: https://nextcloud.example.com
 # username = "your-username"
 # password = "your-password"
 

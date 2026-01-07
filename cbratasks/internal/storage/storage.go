@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -13,10 +14,16 @@ import (
 	"cbratasks/internal/caldav"
 	"cbratasks/internal/config"
 	"cbratasks/internal/task"
+
+	"cbratasks/internal/github"
 )
 
 type Storage struct {
 	tasks    []*task.Task
+<<<<<<< HEAD
+=======
+	issues   []*github.Issue
+>>>>>>> 898c55541e02bb68570a3f243a3a31bb60619efb
 	archived []*task.Task
 	dataDir  string
 	mu       sync.RWMutex
@@ -35,7 +42,7 @@ func New() (*Storage, error) {
 
 func NewWithConfig(cfg *config.Config) (*Storage, error) {
 	dataDir := config.DataDir()
-	if err := os.MkdirAll(dataDir, 0755); err != nil {
+	if err := os.MkdirAll(dataDir, 0o755); err != nil {
 		return nil, err
 	}
 
@@ -44,14 +51,27 @@ func NewWithConfig(cfg *config.Config) (*Storage, error) {
 		cfg:     cfg,
 	}
 
+	// Migrate config from tags to lists
+	cfg.MigrateTagsToLists()
+	if err := config.Save(cfg); err != nil {
+		return nil, fmt.Errorf("failed to save migrated config: %w", err)
+	}
+
 	// Initialize CalDAV client if sync is enabled
 	if cfg.Sync.Enabled && cfg.Sync.URL != "" {
-		s.caldav = caldav.NewClient(cfg.Sync.URL, cfg.Sync.Username, cfg.Sync.Password)
+		client, err := caldav.NewClient(cfg.Sync.URL, cfg.Sync.Username, cfg.Sync.Password, cfg.Sync.Backend)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create caldav client: %w", err)
+		}
+		s.caldav = client
 	}
 
 	if err := s.load(); err != nil {
 		return nil, err
 	}
+
+	// Migrate tasks from old format
+	s.migrateTasks()
 
 	// Auto-archive old completed tasks
 	s.archiveOldTasks()
@@ -94,7 +114,7 @@ func (s *Storage) save() error {
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(s.tasksFile(), data, 0644); err != nil {
+	if err := os.WriteFile(s.tasksFile(), data, 0o644); err != nil {
 		return err
 	}
 
@@ -103,10 +123,39 @@ func (s *Storage) save() error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(s.archiveFile(), archiveData, 0644)
+	return os.WriteFile(s.archiveFile(), archiveData, 0o644)
 }
 
 // archiveOldTasks moves completed tasks older than 24h to archive
+func (s *Storage) migrateTasks() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	defaultList := s.cfg.DefaultList
+	if defaultList == "" {
+		defaultList = "inbox"
+	}
+
+	migrated := false
+	for _, t := range s.tasks {
+		if t.List == "" {
+			t.MigrateFromOldFormat(defaultList)
+			migrated = true
+		}
+	}
+
+	for _, t := range s.archived {
+		if t.List == "" {
+			t.MigrateFromOldFormat(defaultList)
+			migrated = true
+		}
+	}
+
+	if migrated {
+		s.save() // Save migrated tasks
+	}
+}
+
 func (s *Storage) archiveOldTasks() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -319,13 +368,16 @@ func (s *Storage) Sync() error {
 		return fmt.Errorf("sync not enabled")
 	}
 
-	// Ensure collection exists
-	if err := s.caldav.EnsureCollection(); err != nil {
-		return fmt.Errorf("failed to ensure collection: %w", err)
+	ctx := context.Background()
+
+	// Get all list names from config
+	listNames := s.cfg.GetAllLists()
+	if len(listNames) == 0 {
+		return fmt.Errorf("no lists configured")
 	}
 
-	// Pull remote tasks
-	remoteTasks, err := s.caldav.GetAllTasks()
+	// Pull remote tasks from all lists
+	remoteTasks, err := s.caldav.GetAllTasks(ctx, listNames)
 	if err != nil {
 		return fmt.Errorf("failed to fetch remote tasks: %w", err)
 	}
@@ -333,7 +385,7 @@ func (s *Storage) Sync() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Build map of archived task IDs to filter them out
+	// Build map of archived task IDs
 	archivedByID := make(map[string]bool)
 	for _, t := range s.archived {
 		archivedByID[t.ID] = true
@@ -342,40 +394,30 @@ func (s *Storage) Sync() error {
 	// Build maps for comparison
 	localByID := make(map[string]*task.Task)
 	for _, t := range s.tasks {
-		if t.ListName == "radicale" {
-			localByID[t.ID] = t
-		}
+		localByID[t.ID] = t
 	}
 
 	remoteByID := make(map[string]*task.Task)
 	for _, t := range remoteTasks {
-		// Skip tasks that are in our archive
+		// Skip archived tasks
 		if !archivedByID[t.ID] {
 			remoteByID[t.ID] = t
 		}
 	}
 
-	// Merge: remote wins for conflicts, but we push local-only tasks
+	// Merge: remote wins for conflicts
 	var mergedTasks []*task.Task
 
-	// Keep local-only tasks (non-radicale)
-	for _, t := range s.tasks {
-		if t.ListName != "radicale" {
-			mergedTasks = append(mergedTasks, t)
-		}
-	}
-
-	// Process remote tasks (filtered to exclude archived)
+	// Add all remote tasks
 	for _, remote := range remoteByID {
 		mergedTasks = append(mergedTasks, remote)
 	}
 
-	// Push local radicale tasks that don't exist remotely
+	// Push local-only tasks to remote
 	for id, local := range localByID {
 		if _, exists := remoteByID[id]; !exists {
 			// Task exists locally but not remotely - push it
-			if err := s.caldav.CreateTask(local); err != nil {
-				// Log but continue
+			if err := s.caldav.CreateTask(ctx, local); err != nil {
 				fmt.Printf("Warning: failed to push task %s: %v\n", local.Title, err)
 			}
 			mergedTasks = append(mergedTasks, local)
@@ -392,11 +434,8 @@ func (s *Storage) PushTask(t *task.Task) error {
 		return nil // No sync configured
 	}
 
-	if t.ListName != "radicale" {
-		return nil // Only push radicale tasks
-	}
-
-	return s.caldav.CreateTask(t)
+	ctx := context.Background()
+	return s.caldav.CreateTask(ctx, t)
 }
 
 // DeleteRemoteTask deletes a task from the CalDAV server
@@ -405,7 +444,8 @@ func (s *Storage) DeleteRemoteTask(t *task.Task) error {
 		return nil
 	}
 
-	return s.caldav.DeleteTask(t)
+	ctx := context.Background()
+	return s.caldav.DeleteTask(ctx, t)
 }
 
 // AddTaskWithSync adds a task and optionally syncs to CalDAV
@@ -419,12 +459,10 @@ func (s *Storage) AddTaskWithSync(t *task.Task) error {
 		return err
 	}
 
-	// Push to CalDAV if it's a radicale task
-	if t.ListName == "radicale" && s.caldav != nil {
-		if err := s.caldav.EnsureCollection(); err != nil {
-			return fmt.Errorf("failed to ensure collection: %w", err)
-		}
-		if err := s.caldav.CreateTask(t); err != nil {
+	// Push to CalDAV if sync is enabled
+	if s.caldav != nil {
+		ctx := context.Background()
+		if err := s.caldav.CreateTask(ctx, t); err != nil {
 			return fmt.Errorf("failed to sync task: %w", err)
 		}
 	}
@@ -451,12 +489,41 @@ func (s *Storage) ToggleCompleteWithSync(id string) error {
 	}
 
 	// Sync to CalDAV
-	if targetTask != nil && targetTask.ListName == "radicale" && s.caldav != nil {
-		if err := s.caldav.UpdateTask(targetTask); err != nil {
+	if targetTask != nil && s.caldav != nil {
+		ctx := context.Background()
+		if err := s.caldav.UpdateTask(ctx, targetTask); err != nil {
 			return fmt.Errorf("failed to sync task: %w", err)
 		}
 	}
 
+	return nil
+}
+
+// UpdateTaskWithSync updates a task and syncs to CalDAV if needed
+func (s *Storage) UpdateTaskWithSync(t *task.Task) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	t.UpdatedAt = time.Now()
+
+	for i, existing := range s.tasks {
+		if existing.ID == t.ID {
+			s.tasks[i] = t
+			if err := s.save(); err != nil {
+				return err
+			}
+
+			// Sync to CalDAV
+			if s.caldav != nil {
+				ctx := context.Background()
+				if err := s.caldav.UpdateTask(ctx, t); err != nil {
+					return fmt.Errorf("failed to sync task: %w", err)
+				}
+			}
+
+			return nil
+		}
+	}
 	return nil
 }
 
@@ -479,8 +546,9 @@ func (s *Storage) DeleteTaskWithSync(id string) error {
 	}
 
 	// Delete from CalDAV
-	if targetTask != nil && targetTask.ListName == "radicale" && s.caldav != nil {
-		if err := s.caldav.DeleteTask(targetTask); err != nil {
+	if targetTask != nil && s.caldav != nil {
+		ctx := context.Background()
+		if err := s.caldav.DeleteTask(ctx, targetTask); err != nil {
 			// Log but don't fail
 			fmt.Printf("Warning: failed to delete remote task: %v\n", err)
 		}
@@ -532,4 +600,73 @@ func (s *Storage) ArchiveAllCompletedTasks() (int, error) {
 		return 0, err
 	}
 	return count, nil
+}
+
+func (s *Storage) LoadIssues() error {
+	fmt.Println("Loading Issues")
+
+	if !s.cfg.GitHub.Enabled {
+		return fmt.Errorf("GitHub integration not enabled in config")
+	}
+
+	if s.cfg.GitHub.Username == "" || s.cfg.GitHub.Token == "" {
+		return fmt.Errorf("GitHub username or token not configured")
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	issues, err := github.FetchIssues(s.cfg.GitHub.Username, s.cfg.GitHub.Token)
+	if err != nil {
+		return err
+	}
+	s.issues = issues
+	return s.save()
+}
+
+func (s *Storage) GetIssues() []*github.Issue {
+	issues := make([]*github.Issue, len(s.issues))
+	copy(issues, s.issues)
+	return issues
+}
+
+// GetMyIssues returns issues assigned to the configured GitHub user
+func (s *Storage) GetMyIssues() []*github.Issue {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var myIssues []*github.Issue
+	for _, issue := range s.issues {
+		if issue.Assignee == s.cfg.GitHub.Username {
+			myIssues = append(myIssues, issue)
+		}
+	}
+	return myIssues
+}
+
+// GetOpenIssues returns all open issues
+func (s *Storage) GetOpenIssues() []*github.Issue {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var openIssues []*github.Issue
+	for _, issue := range s.issues {
+		if issue.State == "open" {
+			openIssues = append(openIssues, issue)
+		}
+	}
+	return openIssues
+}
+
+// GetMyOpenIssues returns open issues assigned to me
+func (s *Storage) GetMyOpenIssues() []*github.Issue {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var myOpenIssues []*github.Issue
+	for _, issue := range s.issues {
+		if issue.State == "open" && issue.Assignee == s.cfg.GitHub.Username {
+			myOpenIssues = append(myOpenIssues, issue)
+		}
+	}
+	return myOpenIssues
 }

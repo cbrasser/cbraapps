@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"context"
+
 	"cbratasks/internal/task"
 
 	"github.com/google/uuid"
@@ -22,10 +24,11 @@ type Client struct {
 	baseURL  string
 	username string
 	password string
+	backend  string
 	client   *http.Client
 }
 
-func NewClient(baseURL, username, password string) *Client {
+func NewClient(baseURL, username, password, backend string) (*Client, error) {
 	// Ensure baseURL doesn't end with slash
 	baseURL = strings.TrimSuffix(baseURL, "/")
 
@@ -33,14 +36,19 @@ func NewClient(baseURL, username, password string) *Client {
 		baseURL:  baseURL,
 		username: username,
 		password: password,
+		backend:  backend,
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
-	}
+	}, nil
 }
 
-func (c *Client) collectionURL() string {
-	return fmt.Sprintf("%s/%s/%s/", c.baseURL, c.username, collectionName)
+func (c *Client) collectionURL(list string) string {
+	// Assuming lists map to collections directly
+	if list == "" {
+		list = collectionName
+	}
+	return fmt.Sprintf("%s/%s/%s/", c.baseURL, c.username, list)
 }
 
 func (c *Client) resolveHref(href string) (string, error) {
@@ -57,13 +65,13 @@ func (c *Client) resolveHref(href string) (string, error) {
 	return u.String(), nil
 }
 
-func (c *Client) doRequest(method, url string, body []byte, contentType string) (*http.Response, error) {
+func (c *Client) doRequest(ctx context.Context, method, url string, body []byte, contentType string) (*http.Response, error) {
 	var bodyReader io.Reader
 	if body != nil {
 		bodyReader = bytes.NewReader(body)
 	}
 
-	req, err := http.NewRequest(method, url, bodyReader)
+	req, err := http.NewRequestWithContext(ctx, method, url, bodyReader)
 	if err != nil {
 		return nil, err
 	}
@@ -76,10 +84,11 @@ func (c *Client) doRequest(method, url string, body []byte, contentType string) 
 	return c.client.Do(req)
 }
 
-// EnsureCollection creates the cbratasks collection if it doesn't exist
+// EnsureCollection creates the collection if it doesn't exist (using Default list/collection)
 func (c *Client) EnsureCollection() error {
+	ctx := context.Background()
 	// Check if collection exists with PROPFIND
-	resp, err := c.doRequest("PROPFIND", c.collectionURL(), nil, "")
+	resp, err := c.doRequest(ctx, "PROPFIND", c.collectionURL(""), nil, "")
 	if err != nil {
 		return fmt.Errorf("failed to check collection: %w", err)
 	}
@@ -92,13 +101,13 @@ func (c *Client) EnsureCollection() error {
 
 	if resp.StatusCode == 404 {
 		// Create the collection
-		return c.createCollection()
+		return c.createCollection(ctx)
 	}
 
 	return fmt.Errorf("unexpected status checking collection: %d", resp.StatusCode)
 }
 
-func (c *Client) createCollection() error {
+func (c *Client) createCollection(ctx context.Context) error {
 	// MKCALENDAR request body for a VTODO collection
 	body := `<?xml version="1.0" encoding="UTF-8"?>
 <mkcalendar xmlns="urn:ietf:params:xml:ns:caldav">
@@ -113,7 +122,7 @@ func (c *Client) createCollection() error {
   </set>
 </mkcalendar>`
 
-	resp, err := c.doRequest("MKCALENDAR", c.collectionURL(), []byte(body), "application/xml")
+	resp, err := c.doRequest(ctx, "MKCALENDAR", c.collectionURL(""), []byte(body), "application/xml")
 	if err != nil {
 		return fmt.Errorf("failed to create collection: %w", err)
 	}
@@ -127,10 +136,17 @@ func (c *Client) createCollection() error {
 	return nil
 }
 
-// GetAllTasks fetches all tasks from the CalDAV server
-func (c *Client) GetAllTasks() ([]*task.Task, error) {
-	// REPORT request to get all VTODOs
-	body := `<?xml version="1.0" encoding="UTF-8"?>
+// GetAllTasks fetches all tasks from the CalDAV server for the given lists
+func (c *Client) GetAllTasks(ctx context.Context, lists []string) ([]*task.Task, error) {
+	var allTasks []*task.Task
+
+	if len(lists) == 0 {
+		lists = []string{collectionName}
+	}
+
+	for _, list := range lists {
+		// REPORT request to get all VTODOs
+		body := `<?xml version="1.0" encoding="UTF-8"?>
 <calendar-query xmlns="urn:ietf:params:xml:ns:caldav" xmlns:d="DAV:">
   <d:prop>
     <d:getetag/>
@@ -143,54 +159,68 @@ func (c *Client) GetAllTasks() ([]*task.Task, error) {
   </filter>
 </calendar-query>`
 
-	req, err := http.NewRequest("REPORT", c.collectionURL(), bytes.NewReader([]byte(body)))
-	if err != nil {
-		return nil, err
+		req, err := http.NewRequestWithContext(ctx, "REPORT", c.collectionURL(list), bytes.NewReader([]byte(body)))
+		if err != nil {
+			return nil, err
+		}
+
+		req.SetBasicAuth(c.username, c.password)
+		req.Header.Set("Content-Type", "application/xml")
+		req.Header.Set("Depth", "1")
+
+		resp, err := c.client.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch tasks from %s: %w", list, err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != 200 && resp.StatusCode != 207 {
+			// Skip list if not found or error, but maybe log it?
+			continue
+		}
+
+		respBody, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		tasks, err := c.parseMultistatusResponse(respBody)
+		if err != nil {
+			return nil, err
+		}
+
+		// If no tasks found but we got data, try extracting VTODOs directly (fallback)
+		if len(tasks) == 0 && strings.Contains(string(respBody), "BEGIN:VTODO") {
+			tasks = extractVTODOsDirectly(string(respBody))
+		}
+
+		// Set list field on tasks
+		for _, t := range tasks {
+			t.List = list
+			t.ListName = "" // Clear deprecated field
+		}
+
+		allTasks = append(allTasks, tasks...)
 	}
 
-	req.SetBasicAuth(c.username, c.password)
-	req.Header.Set("Content-Type", "application/xml")
-	req.Header.Set("Depth", "1")
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch tasks: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 && resp.StatusCode != 207 {
-		return nil, fmt.Errorf("failed to fetch tasks: status %d", resp.StatusCode)
-	}
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	tasks, err := c.parseMultistatusResponse(respBody)
-	if err != nil {
-		return nil, err
-	}
-
-	// If no tasks found but we got data, try extracting VTODOs directly (fallback)
-	if len(tasks) == 0 && strings.Contains(string(respBody), "BEGIN:VTODO") {
-		tasks = extractVTODOsDirectly(string(respBody))
-	}
-
-	return tasks, nil
+	return allTasks, nil
 }
 
 // CreateTask creates a new task on the CalDAV server
-func (c *Client) CreateTask(t *task.Task) error {
+func (c *Client) CreateTask(ctx context.Context, t *task.Task) error {
 	ical := taskToVTODO(t)
 	url := t.Href
 	if url == "" {
-		url = fmt.Sprintf("%s%s.ics", c.collectionURL(), t.ID)
+		list := t.List
+		if list == "" {
+			list = collectionName
+		}
+		url = fmt.Sprintf("%s%s.ics", c.collectionURL(list), t.ID)
 	} else if resolved, err := c.resolveHref(url); err == nil {
 		url = resolved
 	}
 
-	resp, err := c.doRequest("PUT", url, []byte(ical), "text/calendar; charset=utf-8")
+	resp, err := c.doRequest(ctx, "PUT", url, []byte(ical), "text/calendar; charset=utf-8")
 	if err != nil {
 		return fmt.Errorf("failed to create task: %w", err)
 	}
@@ -205,20 +235,24 @@ func (c *Client) CreateTask(t *task.Task) error {
 }
 
 // UpdateTask updates an existing task on the CalDAV server
-func (c *Client) UpdateTask(t *task.Task) error {
-	return c.CreateTask(t) // PUT is idempotent
+func (c *Client) UpdateTask(ctx context.Context, t *task.Task) error {
+	return c.CreateTask(ctx, t) // PUT is idempotent
 }
 
 // DeleteTask deletes a task from the CalDAV server
-func (c *Client) DeleteTask(t *task.Task) error {
+func (c *Client) DeleteTask(ctx context.Context, t *task.Task) error {
 	url := t.Href
 	if url == "" {
-		url = fmt.Sprintf("%s%s.ics", c.collectionURL(), t.ID)
+		list := t.List
+		if list == "" {
+			list = collectionName
+		}
+		url = fmt.Sprintf("%s%s.ics", c.collectionURL(list), t.ID)
 	} else if resolved, err := c.resolveHref(url); err == nil {
 		url = resolved
 	}
 
-	resp, err := c.doRequest("DELETE", url, nil, "")
+	resp, err := c.doRequest(ctx, "DELETE", url, nil, "")
 	if err != nil {
 		return fmt.Errorf("failed to delete task: %w", err)
 	}

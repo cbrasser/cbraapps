@@ -14,27 +14,29 @@ import (
 type Task struct {
 	ID          string     `json:"id"`
 	Title       string     `json:"title"`
-	Note        string     `json:"note,omitempty"` // Simple text note
-	Tags        []string   `json:"tags,omitempty"`
+	List        string     `json:"list"` // Task list name (e.g., "work", "personal", "inbox")
 	DueDate     *time.Time `json:"due_date,omitempty"`
 	Completed   bool       `json:"completed"`
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
 	Archived    bool       `json:"archived"`
-	ListName    string     `json:"list_name"`      // "local" or "radicale"
 	Href        string     `json:"href,omitempty"` // Remote resource path
+
+	// Deprecated fields - kept for migration only
+	Tags     []string `json:"tags,omitempty"`
+	ListName string   `json:"list_name,omitempty"`
 }
 
-// NewTask creates a new task with the given title
-func NewTask(title string, listName string) *Task {
+// NewTask creates a new task with the given title and list
+func NewTask(title string, list string) *Task {
 	now := time.Now()
 	return &Task{
 		ID:        uuid.New().String(),
 		Title:     title,
+		List:      list,
 		CreatedAt: now,
 		UpdatedAt: now,
-		ListName:  listName,
 	}
 }
 
@@ -62,28 +64,33 @@ func (t *Task) ToggleComplete() {
 	}
 }
 
-// AddTag adds a tag to the task
-func (t *Task) AddTag(tag string) {
-	tag = strings.ToLower(strings.TrimSpace(tag))
-	for _, existing := range t.Tags {
-		if existing == tag {
-			return
-		}
-	}
-	t.Tags = append(t.Tags, tag)
+// SetList sets the task's list
+func (t *Task) SetList(list string) {
+	list = strings.ToLower(strings.TrimSpace(list))
+	t.List = list
 	t.UpdatedAt = time.Now()
 }
 
-// RemoveTag removes a tag from the task
-func (t *Task) RemoveTag(tag string) {
-	tag = strings.ToLower(strings.TrimSpace(tag))
-	for i, existing := range t.Tags {
-		if existing == tag {
-			t.Tags = append(t.Tags[:i], t.Tags[i+1:]...)
-			t.UpdatedAt = time.Now()
-			return
-		}
+// MigrateFromOldFormat converts old tag/ListName format to new list-based format
+func (t *Task) MigrateFromOldFormat(defaultList string) {
+	// If already has a list, no migration needed
+	if t.List != "" {
+		return
 	}
+
+	// Try migrating from old Tags field (use first tag as list)
+	if len(t.Tags) > 0 {
+		t.List = strings.ToLower(strings.TrimSpace(t.Tags[0]))
+		t.Tags = nil // Clear tags after migration
+		t.ListName = ""
+		t.UpdatedAt = time.Now()
+		return
+	}
+
+	// Otherwise use default list
+	t.List = defaultList
+	t.ListName = ""
+	t.UpdatedAt = time.Now()
 }
 
 // SetDueDate sets the due date
