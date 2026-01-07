@@ -59,7 +59,7 @@ func initialModel(viewMode ViewMode, oneShot bool, radicaleConfig *RadicaleConfi
 			endTime:   "10:00",
 		},
 		// ... (existing fields)
-		selectedEventIdx:  0, // Selection index for events
+
 		eventForm:         eventForm,
 		loadingProgress:   prog,
 		loadingSpinner:    s,
@@ -321,6 +321,65 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "escape":
 			m.dayInput = ""
+		case "e":
+			// Edit selected event
+			if m.viewMode == DailyView || m.viewMode == WeeklyView {
+				var targetEvent *Event
+
+				if m.viewMode == DailyView {
+					dayEvents := m.getEventsForDay(m.currentDate)
+					if m.selectedEventIdx >= 0 && m.selectedEventIdx < len(dayEvents) {
+						targetEvent = &dayEvents[m.selectedEventIdx]
+					}
+				} else {
+					// Weekly view - find event by global index
+					weekStart := m.getWeekStart(m.currentDate)
+					currentIndex := 0
+					found := false
+					for i := 0; i < 7; i++ {
+						day := weekStart.AddDate(0, 0, i)
+						dayEvents := m.getEventsForDay(day)
+						if m.selectedEventIdx >= currentIndex && m.selectedEventIdx < currentIndex+len(dayEvents) {
+							localIdx := m.selectedEventIdx - currentIndex
+							targetEvent = &dayEvents[localIdx]
+							found = true
+							break
+						}
+						currentIndex += len(dayEvents)
+					}
+					if !found {
+						// Index out of bounds
+					}
+				}
+
+				if targetEvent != nil {
+					// Populate form
+					m.creationMode = UIFormInput
+					*m.formSummary = targetEvent.Summary
+					*m.formDescription = targetEvent.Description
+					*m.formDate = targetEvent.Start.Format("02-01-2006")
+					*m.formStartTime = targetEvent.Start.Format("15:04")
+					*m.formEndTime = targetEvent.End.Format("15:04")
+					*m.formCalendar = targetEvent.CalendarName
+					*m.formRepeatOptions = "none"
+					*m.formRepeatEndDate = ""
+					m.selectedCalendar = targetEvent.CalendarName
+
+					// Rebuild form
+					m.eventForm = buildEventForm(m.formSummary, m.formDescription, m.formDate, m.formStartTime, m.formEndTime, m.formCalendar, m.formRepeatOptions, m.formRepeatEndDate, m.calendars)
+
+					// Initialize form state for manual editing logic
+					m.uiFormState = UIFormState{
+						summary:     targetEvent.Summary,
+						description: targetEvent.Description,
+						date:        targetEvent.Start,
+						startTime:   targetEvent.Start.Format("15:04"),
+						endTime:     targetEvent.End.Format("15:04"),
+					}
+
+					return m, m.eventForm.Init()
+				}
+			}
 		}
 	}
 	return m, nil

@@ -39,7 +39,7 @@ func (m model) viewNaturalLanguage() string {
 
 func (m model) viewLoading() string {
 	var b strings.Builder
-	
+
 	// Center the loading view vertically and horizontally
 	spinnerLine := m.loadingSpinner.View() + " " + titleStyle.Render("Loading Calendars...")
 	b.WriteString("\n\n")
@@ -152,9 +152,10 @@ func (m model) viewDaily() string {
 			}
 		}
 
-		for _, event := range dayEvents {
+		for i, event := range dayEvents {
 			isNow := m.currentDate.Format("2006-01-02") == currentTime.Format("2006-01-02") &&
 				currentTime.After(event.Start) && currentTime.Before(event.End)
+			isSelected := i == m.selectedEventIdx
 
 			var boxContent strings.Builder
 
@@ -176,7 +177,12 @@ func (m model) viewDaily() string {
 			titleStyle := lipgloss.NewStyle().
 				Foreground(event.CalendarColor).
 				Bold(true)
-			boxContent.WriteString(titleStyle.Render("● " + event.Summary))
+
+			prefix := "● "
+			if isSelected {
+				prefix = "👉 " // Visual indicator for selection
+			}
+			boxContent.WriteString(titleStyle.Render(prefix + event.Summary))
 
 			if event.Description != "" && strings.TrimSpace(event.Description) != "" {
 				descStyle := lipgloss.NewStyle().
@@ -195,7 +201,11 @@ func (m model) viewDaily() string {
 				BorderForeground(event.CalendarColor).
 				Width(boxWidth)
 
-			if isNow {
+			if isSelected {
+				boxStyle = boxStyle.
+					BorderForeground(lipgloss.Color("220")). // Gold border for selection
+					BorderStyle(lipgloss.DoubleBorder())
+			} else if isNow {
 				boxStyle = boxStyle.
 					BorderForeground(lipgloss.Color("205")).
 					BorderStyle(lipgloss.ThickBorder())
@@ -234,14 +244,22 @@ func (m model) viewWeekly() string {
 	))
 	b.WriteString(dateHeader + "\n")
 
+	globalEventIdx := 0
+
 	for i := 0; i < 7; i++ {
 		day := weekStart.AddDate(0, 0, i)
 		dayEvents := m.getEventsForDay(day)
 
-		dayHeader := lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("117")).
-			Render(day.Format("Monday, Jan 2"))
+		isToday := day.Format("2006-01-02") == time.Now().Format("2006-01-02")
+
+		headerStyle := lipgloss.NewStyle().Bold(true)
+		if isToday {
+			headerStyle = headerStyle.Foreground(lipgloss.Color("205")).Background(lipgloss.Color("235")) // Pink for today
+		} else {
+			headerStyle = headerStyle.Foreground(lipgloss.Color("117"))
+		}
+
+		dayHeader := headerStyle.Render(day.Format("Monday, Jan 2"))
 
 		b.WriteString("\n" + dayHeader + "\n")
 
@@ -249,6 +267,8 @@ func (m model) viewWeekly() string {
 			b.WriteString(noEventsStyle.Render("  No events") + "\n")
 		} else {
 			for _, event := range dayEvents {
+				isSelected := globalEventIdx == m.selectedEventIdx
+
 				timeStr := fmt.Sprintf("  %s - %s",
 					event.Start.Format("15:04"),
 					event.End.Format("15:04"),
@@ -259,8 +279,16 @@ func (m model) viewWeekly() string {
 					Foreground(event.CalendarColor).
 					MarginLeft(2)
 
-				b.WriteString(eventStyle.Render(fmt.Sprintf("● %s", event.Summary)))
+				prefix := "● "
+				if isSelected {
+					prefix = "👉 "                                                        // Selection indicator
+					eventStyle = eventStyle.Bold(true).Background(lipgloss.Color("236")) // Slight background for selection
+				}
+
+				b.WriteString(eventStyle.Render(fmt.Sprintf("%s%s", prefix, event.Summary)))
 				b.WriteString("\n")
+
+				globalEventIdx++
 			}
 		}
 	}

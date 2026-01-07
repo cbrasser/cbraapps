@@ -58,7 +58,7 @@ type CalendarConfig struct {
 }
 
 type RadicaleConfig struct {
-	Backend   string `toml:"backend"`    // "local", "radicale", or "nextcloud"
+	Backend   string `toml:"backend"` // "local", "radicale", or "nextcloud"
 	ServerURL string `toml:"server_url"`
 	Username  string `toml:"username"`
 	Password  string `toml:"password"`
@@ -105,11 +105,11 @@ type supportedComponentSet struct {
 }
 
 type prop struct {
-	DisplayName              string                `xml:"DAV: displayname"`
-	CalendarDescription      string                `xml:"urn:ietf:params:xml:ns:caldav calendar-description"`
-	CalendarColor            string                `xml:"http://apple.com/ns/ical/ calendar-color"`
-	ResourceType             resourceType          `xml:"DAV: resourcetype"`
-	SupportedComponentSet    supportedComponentSet `xml:"urn:ietf:params:xml:ns:caldav supported-calendar-component-set"`
+	DisplayName           string                `xml:"DAV: displayname"`
+	CalendarDescription   string                `xml:"urn:ietf:params:xml:ns:caldav calendar-description"`
+	CalendarColor         string                `xml:"http://apple.com/ns/ical/ calendar-color"`
+	ResourceType          resourceType          `xml:"DAV: resourcetype"`
+	SupportedComponentSet supportedComponentSet `xml:"urn:ietf:params:xml:ns:caldav supported-calendar-component-set"`
 }
 
 type multistatus struct {
@@ -154,6 +154,7 @@ type model struct {
 	naturalLangInput string
 	uiFormState      UIFormState
 	selectedCalendar string
+	selectedEventIdx int    // Index of selected event in current view
 	message          string // Success/error messages
 
 	// New UI components
