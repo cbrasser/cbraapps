@@ -16,12 +16,12 @@ import (
 )
 
 type Storage struct {
-	tasks      []*task.Task
-	archived   []*task.Task
-	dataDir    string
-	mu         sync.RWMutex
-	caldav     *caldav.Client
-	cfg        *config.Config
+	tasks    []*task.Task
+	archived []*task.Task
+	dataDir  string
+	mu       sync.RWMutex
+	caldav   *caldav.Client
+	cfg      *config.Config
 }
 
 func New() (*Storage, error) {
@@ -400,12 +400,12 @@ func (s *Storage) PushTask(t *task.Task) error {
 }
 
 // DeleteRemoteTask deletes a task from the CalDAV server
-func (s *Storage) DeleteRemoteTask(id string) error {
+func (s *Storage) DeleteRemoteTask(t *task.Task) error {
 	if s.caldav == nil {
 		return nil
 	}
 
-	return s.caldav.DeleteTask(id)
+	return s.caldav.DeleteTask(t)
 }
 
 // AddTaskWithSync adds a task and optionally syncs to CalDAV
@@ -480,7 +480,7 @@ func (s *Storage) DeleteTaskWithSync(id string) error {
 
 	// Delete from CalDAV
 	if targetTask != nil && targetTask.ListName == "radicale" && s.caldav != nil {
-		if err := s.caldav.DeleteTask(id); err != nil {
+		if err := s.caldav.DeleteTask(targetTask); err != nil {
 			// Log but don't fail
 			fmt.Printf("Warning: failed to delete remote task: %v\n", err)
 		}
@@ -533,4 +533,3 @@ func (s *Storage) ArchiveAllCompletedTasks() (int, error) {
 	}
 	return count, nil
 }
-

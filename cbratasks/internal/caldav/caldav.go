@@ -2,9 +2,11 @@ package caldav
 
 import (
 	"bytes"
+	"encoding/xml"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -39,6 +41,20 @@ func NewClient(baseURL, username, password string) *Client {
 
 func (c *Client) collectionURL() string {
 	return fmt.Sprintf("%s/%s/%s/", c.baseURL, c.username, collectionName)
+}
+
+func (c *Client) resolveHref(href string) (string, error) {
+	if strings.HasPrefix(href, "http://") || strings.HasPrefix(href, "https://") {
+		return href, nil
+	}
+
+	u, err := url.Parse(c.baseURL)
+	if err != nil {
+		return "", err
+	}
+
+	u.Path = href
+	return u.String(), nil
 }
 
 func (c *Client) doRequest(method, url string, body []byte, contentType string) (*http.Response, error) {
@@ -151,12 +167,12 @@ func (c *Client) GetAllTasks() ([]*task.Task, error) {
 		return nil, err
 	}
 
-	tasks, err := parseMultistatusResponse(string(respBody))
+	tasks, err := c.parseMultistatusResponse(respBody)
 	if err != nil {
 		return nil, err
 	}
 
-	// If no tasks found but we got data, try extracting VTODOs directly
+	// If no tasks found but we got data, try extracting VTODOs directly (fallback)
 	if len(tasks) == 0 && strings.Contains(string(respBody), "BEGIN:VTODO") {
 		tasks = extractVTODOsDirectly(string(respBody))
 	}
@@ -167,7 +183,12 @@ func (c *Client) GetAllTasks() ([]*task.Task, error) {
 // CreateTask creates a new task on the CalDAV server
 func (c *Client) CreateTask(t *task.Task) error {
 	ical := taskToVTODO(t)
-	url := fmt.Sprintf("%s%s.ics", c.collectionURL(), t.ID)
+	url := t.Href
+	if url == "" {
+		url = fmt.Sprintf("%s%s.ics", c.collectionURL(), t.ID)
+	} else if resolved, err := c.resolveHref(url); err == nil {
+		url = resolved
+	}
 
 	resp, err := c.doRequest("PUT", url, []byte(ical), "text/calendar; charset=utf-8")
 	if err != nil {
@@ -189,8 +210,13 @@ func (c *Client) UpdateTask(t *task.Task) error {
 }
 
 // DeleteTask deletes a task from the CalDAV server
-func (c *Client) DeleteTask(id string) error {
-	url := fmt.Sprintf("%s%s.ics", c.collectionURL(), id)
+func (c *Client) DeleteTask(t *task.Task) error {
+	url := t.Href
+	if url == "" {
+		url = fmt.Sprintf("%s%s.ics", c.collectionURL(), t.ID)
+	} else if resolved, err := c.resolveHref(url); err == nil {
+		url = resolved
+	}
 
 	resp, err := c.doRequest("DELETE", url, nil, "")
 	if err != nil {
@@ -262,10 +288,31 @@ func taskToVTODO(t *task.Task) string {
 }
 
 // parseMultistatusResponse parses a CalDAV multistatus response
-func parseMultistatusResponse(body string) ([]*task.Task, error) {
+func (c *Client) parseMultistatusResponse(body []byte) ([]*task.Task, error) {
+	type Prop struct {
+		Inner []byte `xml:",innerxml"`
+	}
+	type PropStats struct {
+		Prop   Prop   `xml:"prop"`
+		Status string `xml:"status"`
+	}
+	type Response struct {
+		Href      string      `xml:"href"`
+		PropStats []PropStats `xml:"propstat"`
+	}
+	type Multistatus struct {
+		Responses []Response `xml:"response"`
+	}
+
+	var ms Multistatus
+	if err := xml.Unmarshal(body, &ms); err != nil {
+		// Fallback to string parsing if XML fails (e.g. malformed)
+		return nil, err
+	}
+
 	var tasks []*task.Task
 
-	// Try multiple namespace patterns for calendar-data
+	// Regex to extract calendar-data from inner XML
 	patterns := []string{
 		`(?s)<cal:calendar-data[^>]*>(.*?)</cal:calendar-data>`,
 		`(?s)<C:calendar-data[^>]*>(.*?)</C:calendar-data>`,
@@ -273,19 +320,35 @@ func parseMultistatusResponse(body string) ([]*task.Task, error) {
 		`(?s)<ns\d:calendar-data[^>]*>(.*?)</ns\d:calendar-data>`,
 	}
 
-	for _, pattern := range patterns {
-		re := regexp.MustCompile(pattern)
-		matches := re.FindAllStringSubmatch(body, -1)
+	for _, resp := range ms.Responses {
+		var icalData string
 
-		for _, match := range matches {
-			if len(match) > 1 {
-				icalData := unescapeXML(match[1])
-				t, err := vtodoToTask(icalData)
-				if err != nil {
-					continue // Skip invalid entries
+		// Find successful propstat
+		for _, ps := range resp.PropStats {
+			if strings.Contains(ps.Status, "200") {
+				inner := string(ps.Prop.Inner)
+				// Apply regexes to find calendar-data
+				for _, pattern := range patterns {
+					re := regexp.MustCompile(pattern)
+					match := re.FindStringSubmatch(inner)
+					if len(match) > 1 {
+						icalData = unescapeXML(match[1])
+						break
+					}
 				}
-				tasks = append(tasks, t)
 			}
+			if icalData != "" {
+				break
+			}
+		}
+
+		if icalData != "" {
+			t, err := vtodoToTask(icalData)
+			if err != nil {
+				continue
+			}
+			t.Href = resp.Href // Capture the href
+			tasks = append(tasks, t)
 		}
 	}
 

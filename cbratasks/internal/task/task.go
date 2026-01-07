@@ -22,7 +22,8 @@ type Task struct {
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
 	Archived    bool       `json:"archived"`
-	ListName    string     `json:"list_name"` // "local" or "radicale"
+	ListName    string     `json:"list_name"`      // "local" or "radicale"
+	Href        string     `json:"href,omitempty"` // Remote resource path
 }
 
 // NewTask creates a new task with the given title
